@@ -1,0 +1,227 @@
+name: PowerShell QOps CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  push:
+    tags:
+      - 'v*.*.*' # Trigger on version tags like v0.1.0
+
+jobs:
+  build-and-test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # Allow all jobs in the matrix to complete even if one fails
+      matrix:
+        os: [windows-latest, windows-2019, ubuntu-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up PowerShell
+      uses: microsoft/setup-powershell@v1
+      with:
+        version: '7' # Ensure PowerShell 7+
+
+    - name: Install PSScriptAnalyzer and Pester (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -Confirm:$false -ErrorAction Stop
+        Install-Module Pester -Scope CurrentUser -Force -Confirm:$false -ErrorAction Stop
+        # Import-Module PSScriptAnalyzer -ErrorAction Stop # Not strictly needed before Test-ModuleManifest
+        # Import-Module Pester -ErrorAction Stop
+
+    - name: Install PSScriptAnalyzer and Pester (Linux)
+      if: runner.os == 'Linux'
+      shell: pwsh
+      run: |
+        Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -Confirm:$false -SkipPublisherCheck -ErrorAction Stop
+        Install-Module Pester -Scope CurrentUser -Force -Confirm:$false -SkipPublisherCheck -ErrorAction Stop
+        # Import-Module PSScriptAnalyzer -ErrorAction Stop
+        # Import-Module Pester -ErrorAction Stop
+        
+    - name: Validate Module Manifest (QAOps.psd1)
+      shell: pwsh
+      run: |
+        Test-ModuleManifest -Path ./modules/QAOps/QAOps.psd1 -ErrorAction Stop | Out-Null
+        Write-Host "Module manifest ./modules/QAOps/QAOps.psd1 is valid."
+
+    - name: Lint PowerShell scripts
+      shell: pwsh
+      run: |
+        Import-Module PSScriptAnalyzer -ErrorAction Stop # Ensure it's loaded for this step
+        $filesToLint = Get-ChildItem -Path './scripts', './modules' -Recurse -Include '*.ps1', '*.psm1'
+        if ($null -eq $filesToLint) {
+          Write-Host "No PowerShell files found to lint in ./scripts or ./modules. Skipping linting."
+        } else {
+          Write-Host "Linting files:"
+          $filesToLint.FullName | ForEach-Object { Write-Host "- $_" }
+          Invoke-ScriptAnalyzer -Path $filesToLint.FullName -Recurse -Outvariable issues -ErrorAction SilentlyContinue
+          $issues | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Append
+          Get-Content "./lint-results.txt" # Output to console as well
+          if ($issues | Where-Object {$_.Severity -in @('Error', 'Warning')}) {
+            Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
+            exit 1
+          } else {
+            Write-Host "PSScriptAnalyzer found no critical issues."
+          }
+        }
+
+    - name: Upload Linter Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: linter-results-${{ matrix.os }}
+        path: ./lint-results.txt
+
+    - name: Run Pester tests
+      shell: pwsh
+      run: |
+        Import-Module Pester -ErrorAction Stop # Ensure it's loaded for this step
+        $testFiles = Get-ChildItem -Path './tests' -Filter 'Pester.Tests.ps1' -Recurse
+        if ($null -eq $testFiles) {
+          Write-Warning "No Pester test files named 'Pester.Tests.ps1' found in ./tests. Skipping Pester tests."
+          New-Item -Path "./PesterTestResults.xml" -ItemType File -Force | Out-Null
+          New-Item -Path "./Coverage.xml" -ItemType File -Force | Out-Null
+        } else {
+          Write-Host "Running Pester tests for:"
+          $testFiles.FullName | ForEach-Object { Write-Host "- $_" }
+          
+          $pesterConfig = [PesterConfiguration]::Default
+          $pesterConfig.Run.Path = $testFiles.FullName
+          $pesterConfig.TestResult.Enabled = $true
+          $pesterConfig.TestResult.OutputPath = "./PesterTestResults.xml"
+          $pesterConfig.TestResult.Format = 'NUnitXml'
+          $pesterConfig.CodeCoverage.Enabled = $true
+          $pesterConfig.CodeCoverage.Path = "./modules/QAOps/QAOps.psm1"
+          $pesterConfig.CodeCoverage.OutputFormat = "JaCoCo"
+          $pesterConfig.CodeCoverage.OutputPath = "./Coverage.xml"
+  
+          $result = Invoke-Pester -Configuration $pesterConfig -PassThru
+          if ($result.FailedCount -gt 0) {
+            Write-Error "Pester tests failed: $($result.FailedCount) failures."
+            exit 1
+          } else {
+            Write-Host "Pester tests passed: $($result.PassedCount) passed."
+          }
+        }
+  
+    - name: Enforce code coverage >= 80%
+      if: success()
+      shell: pwsh
+      run: |
+        if (-not (Test-Path "./Coverage.xml")) {
+          Write-Warning "Coverage.xml not found. Skipping coverage check."
+          exit 0
+        }
+        try {
+            $cov = [xml](Get-Content -Path "./Coverage.xml" -Raw)
+            $lineRateAttribute = $null
+            $lineCounterReport = $cov.report.counter | Where-Object {$_.type -eq 'LINE'}
+            if ($lineCounterReport) {
+                $covered = [double]$lineCounterReport.'@covered'
+                $missed = [double]$lineCounterReport.'@missed'
+                if (($covered + $missed) -gt 0) { $lineRateAttribute = $covered / ($covered + $missed) } else { $lineRateAttribute = 1.0 }
+            }
+            if (-not $lineRateAttribute -and $cov.coverage.'@line-rate') { $lineRateAttribute = [double]$cov.coverage.'@line-rate' }
+            if (-not $lineRateAttribute) {
+                $totalLinesCovered = 0; $totalLinesMissed = 0
+                $counters = $cov.SelectNodes("//counter[@type='LINE']")
+                if ($counters.Count -gt 0) {
+                    foreach ($counter in $counters) { $totalLinesCovered += [double]$counter.'@covered'; $totalLinesMissed += [double]$counter.'@missed' }
+                    if (($totalLinesCovered + $totalLinesMissed) -gt 0) { $lineRateAttribute = $totalLinesCovered / ($totalLinesCovered + $totalLinesMissed) } else { $lineRateAttribute = 1.0 }
+                } else { Write-Warning "No LINE counters found in Coverage.xml."; $lineRateAttribute = 0 }
+            }
+            if ($null -eq $lineRateAttribute) { Write-Error "Could not determine line-rate from Coverage.xml."; exit 1 }
+            $pct = [int]($lineRateAttribute * 100)
+            Write-Host "Current code coverage on ${{ runner.os }}: $pct%"
+            if ($pct -lt 80) { Write-Error "Code coverage on ${{ runner.os }} is $pct%, less than 80%."; exit 1 }
+            else { Write-Host "Code coverage $pct% on ${{ runner.os }} meets threshold." }
+        } catch { Write-Error "Error parsing Coverage.xml: $($_.Exception.Message)"; exit 1 }
+
+    - name: Upload Pester Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pester-test-results-${{ matrix.os }}
+        path: ./PesterTestResults.xml
+  
+    - name: Upload Coverage Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ matrix.os }}
+        path: ./Coverage.xml
+        
+    # Codecov upload can be added here if desired, typically for one OS (e.g., windows-latest)
+    # - name: Upload to Codecov
+    #   if: success() && matrix.os == 'windows-latest'
+    #   uses: codecov/codecov-action@v3
+    #   with:
+    #     token: ${{ secrets.CODECOV_TOKEN }}
+    #     files: ./Coverage.xml
+    #     fail_ci_if_error: true
+
+  release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
+    needs: build-and-test # Ensure build and tests pass before releasing
+    runs-on: ubuntu-latest # Release creation can run on any OS
+    permissions:
+      contents: write # Required to create releases and upload assets
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Archive module and scripts
+      shell: bash
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        ARTIFACT_NAME="powershell-qops-${VERSION}.zip"
+        # Create a staging directory
+        mkdir ./release_staging
+        # Copy module and scripts to staging
+        cp -R ./modules ./release_staging/
+        cp -R ./scripts ./release_staging/
+        cp ./LICENSE ./release_staging/
+        cp ./README.md ./release_staging/
+        cp ./CHANGELOG.md ./release_staging/
+        # Create the zip from the staging directory to keep paths clean in the zip
+        (cd ./release_staging && zip -r ../${ARTIFACT_NAME} .)
+        echo "ARTIFACT_PATH=./${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+        echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+      id: archive
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          Release of version ${{ github.ref_name }}.
+          See [CHANGELOG.md](CHANGELOG.md) for details.
+        draft: false
+        prerelease: false # Set to true if it's a pre-release
+
+    - name: Upload Release Asset (Zip)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.archive.outputs.ARTIFACT_PATH }}
+        asset_name: ${{ steps.archive.outputs.ARTIFACT_NAME }}
+        asset_content_type: application/zip
