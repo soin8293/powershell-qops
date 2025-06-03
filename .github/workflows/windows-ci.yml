@@ -56,12 +56,22 @@ jobs:
         $filesToLint = Get-ChildItem -Path './scripts', './modules' -Recurse -Include '*.ps1', '*.psm1'
         if ($null -eq $filesToLint) {
           Write-Host "No PowerShell files found to lint in ./scripts or ./modules. Skipping linting."
+          # Create an empty lint-results.txt if no files are linted so upload doesn't fail
+          Set-Content -Path "./lint-results.txt" -Value "No PowerShell files found to lint." -ErrorAction Stop
         } else {
           Write-Host "Linting files:"
           $filesToLint.FullName | ForEach-Object { Write-Host "- $_" }
           Invoke-ScriptAnalyzer -Path $filesToLint.FullName -Recurse -Outvariable issues -ErrorAction SilentlyContinue
-          $issues | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Append
+          # Ensure lint-results.txt is overwritten, not appended, for a clean report per run
+          $issues | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Force -ErrorAction Stop
           Get-Content "./lint-results.txt" # Output to console as well
+          if (Test-Path "./lint-results.txt") {
+            Write-Host "lint-results.txt successfully created."
+          } else {
+            Write-Error "lint-results.txt was NOT created."
+            # Optionally create a dummy file here too if Invoke-ScriptAnalyzer itself failed to produce output but didn't throw
+            Set-Content -Path "./lint-results.txt" -Value "Error during linting or no issues found to output." -ErrorAction SilentlyContinue
+          }
           if ($issues | Where-Object {$_.Severity -in @('Error', 'Warning')}) {
             Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
             exit 1
@@ -100,7 +110,23 @@ jobs:
           $pesterConfig.CodeCoverage.OutputFormat = "JaCoCo"
           $pesterConfig.CodeCoverage.OutputPath = "./Coverage.xml"
   
-          $result = Invoke-Pester -Configuration $pesterConfig -PassThru
+          $result = Invoke-Pester -Configuration $pesterConfig -PassThru -ErrorAction Stop
+          
+          # Verify Pester output files were created
+          if (Test-Path "./PesterTestResults.xml") {
+            Write-Host "PesterTestResults.xml successfully created."
+          } else {
+            Write-Error "PesterTestResults.xml was NOT created by Pester."
+            # Create a dummy file so upload doesn't fail, but this indicates a Pester problem
+            New-Item -Path "./PesterTestResults.xml" -ItemType File -Force -Value "<empty/>" | Out-Null
+          }
+          if (Test-Path "./Coverage.xml") {
+            Write-Host "Coverage.xml successfully created."
+          } else {
+            Write-Error "Coverage.xml was NOT created by Pester."
+            New-Item -Path "./Coverage.xml" -ItemType File -Force -Value "<empty/>" | Out-Null
+          }
+
           if ($result.FailedCount -gt 0) {
             Write-Error "Pester tests failed: $($result.FailedCount) failures."
             exit 1
