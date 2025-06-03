@@ -2,12 +2,13 @@ name: PowerShell QOps CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  push:
+    branches:
+      - main
     tags:
       - 'v*.*.*' # Trigger on version tags like v0.1.0
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-and-test:
