@@ -81,10 +81,10 @@ AliasesToExport = @()
 
 # List of all files packaged with this module
 FileList = @(
-    '..\scripts\Get-SystemReport.ps1',
-    '..\scripts\Fix-DiskCleanup.ps1'
-    # Add other wrapper scripts here as they are created, e.g.:
-    # '..\scripts\Invoke-FullAudit.ps1'
+    # Wrapper scripts are part of the repository but not packaged inside the module via FileList.
+    # They are intended to be used from the cloned repository structure.
+    # If these scripts were meant to be installed alongside the module (e.g., in the module's bin directory),
+    # they would typically be placed within the module folder (e.g., modules/QAOps/scripts) and listed here without '..\'
 )
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata.
