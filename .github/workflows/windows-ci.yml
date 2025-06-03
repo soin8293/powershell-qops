@@ -17,16 +17,13 @@ jobs:
     strategy:
       fail-fast: false # Allow all jobs in the matrix to complete even if one fails
       matrix:
-        os: [windows-latest, windows-2019, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest] # Updated OS matrix
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up PowerShell
-      uses: microsoft/setup-powershell@v1
-      with:
-        version: '7' # Ensure PowerShell 7+
+    # Removed 'Set up PowerShell' step as PS7+ is pre-installed
 
     - name: Install PSScriptAnalyzer and Pester (Windows)
       if: runner.os == 'Windows'
