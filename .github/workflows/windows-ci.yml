@@ -61,7 +61,9 @@ jobs:
         } else {
           Write-Host "Linting files:"
           $filesToLint.FullName | ForEach-Object { Write-Host "- $_" }
-          Invoke-ScriptAnalyzer -Path $filesToLint.FullName -Recurse -Outvariable issues -ErrorAction SilentlyContinue
+          Invoke-ScriptAnalyzer -Path ($filesToLint | Select-Object -Expand FullName) `
+                      -Recurse `
+                      -OutVariable issues -ErrorAction SilentlyContinue
           # Ensure lint-results.txt is overwritten, not appended, for a clean report per run
           $issues | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Force -ErrorAction Stop
           Get-Content "./lint-results.txt" # Output to console as well
