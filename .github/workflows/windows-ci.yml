@@ -61,11 +61,14 @@ jobs:
         } else {
           Write-Host "Linting files:"
           $filesToLint.FullName | ForEach-Object { Write-Host "- $_" }
-          Invoke-ScriptAnalyzer -Path ($filesToLint | Select-Object -Expand FullName) `
-                      -Recurse `
-                      -OutVariable issues -ErrorAction SilentlyContinue
+          # Build a flat string array of absolute paths
+          $lintPaths = @(
+              foreach ($f in $filesToLint) { $f.FullName }
+          )
+          # Run the analyzer
+          Invoke-ScriptAnalyzer -Path $lintPaths -Recurse -OutVariable SAresults
           # Ensure lint-results.txt is overwritten, not appended, for a clean report per run
-          $issues | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Force -ErrorAction Stop
+          $SAresults | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Force -ErrorAction Stop
           Get-Content "./lint-results.txt" # Output to console as well
           if (Test-Path "./lint-results.txt") {
             Write-Host "lint-results.txt successfully created."
@@ -74,7 +77,7 @@ jobs:
             # Optionally create a dummy file here too if Invoke-ScriptAnalyzer itself failed to produce output but didn't throw
             Set-Content -Path "./lint-results.txt" -Value "Error during linting or no issues found to output." -ErrorAction SilentlyContinue
           }
-          if ($issues | Where-Object {$_.Severity -in @('Error', 'Warning')}) {
+          if ($SAresults | Where-Object {$_.Severity -in @('Error', 'Warning')}) {
             Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
             exit 1
           } else {
