@@ -61,11 +61,9 @@ jobs:
         } else {
           Write-Host "Linting files:"
           $filesToLint.FullName | ForEach-Object { Write-Host "- $_" }
-          # Build a flat string array of absolute paths
-          $lintPaths = @(
-              foreach ($f in $filesToLint) { $f.FullName }
-          )
-          # Run the analyzer
+          # Build a strict string array of full paths
+          [string[]]$lintPaths = $filesToLint | ForEach-Object { $_.FullName }
+          # Run the analyzer once on that flat array
           Invoke-ScriptAnalyzer -Path $lintPaths -Recurse -OutVariable SAresults
           # Ensure lint-results.txt is overwritten, not appended, for a clean report per run
           $SAresults | Format-Table -AutoSize | Out-File -FilePath "./lint-results.txt" -Force -ErrorAction Stop
