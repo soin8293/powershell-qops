@@ -8,6 +8,33 @@ BeforeAll {
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\modules\QAOps\QAOps.psd1'
     Write-Host "Importing QAOps module from: $modulePath"
     Import-Module -Name $modulePath -Force -ErrorAction Stop
+
+    # Mock Get-CimInstance to avoid hitting real WMI/CIM
+    Mock Get-CimInstance -ModuleName CimCmdlets -MockWith {
+        param($ClassName)
+        if ($ClassName -eq 'Win32_OperatingSystem') {
+            return [PSCustomObject]@{
+                Caption = 'Mocked OS'
+                Version = '10.0.19045'
+                BuildNumber = '19045'
+                OSArchitecture = '64-bit'
+                RegisteredUser = 'Mock User'
+                LastBootUpTime = (Get-Date).AddDays(-1)
+            }
+        }
+        if ($ClassName -eq 'Win32_LogicalDisk') {
+            return @(
+                [PSCustomObject]@{
+                    DeviceID = 'C:'
+                    VolumeName = 'Boot'
+                    FileSystem = 'NTFS'
+                    FreeSpace = 100GB
+                    Size = 200GB
+                }
+            )
+        }
+        return $null
+    }
 }
 
 Describe 'Get-SystemReport (Function from QAOps Module)' {
@@ -287,7 +314,7 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
             # Mock Get-ChildItem to return these specific files
             InModuleScope QAOps {
                 Mock Get-ChildItem -MockWith {
-                    param($Path)
+                    param($Path = @('C:\Temp'))
                     $items = @()
                     if ($Path -eq $mockUserTemp) { $items += $oldFileUser, $newFileUser }
                     if ($Path -eq $mockWindowsTemp) { $items += $oldFileWin }
@@ -330,7 +357,7 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
             # Mock Get-ChildItem
             InModuleScope QAOps {
                 Mock Get-ChildItem -MockWith {
-                    param($Path)
+                    param($Path = @('C:\Temp'))
                     if ($Path -eq $mockUserTemp) {
                         return @(Get-Item $fileToDeletePath), @(Get-Item $fileToKeepPath)
                     }
@@ -369,7 +396,7 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
             (Get-Item $fileToSkipPath).LastWriteTime = $cutoffDate.AddDays(-1)
 
             InModuleScope QAOps {
-                Mock Get-ChildItem -MockWith { @(Get-Item $fileToSkipPath) }
+                Mock Get-ChildItem -MockWith { param($Path = @('C:\Temp')) @(Get-Item $fileToSkipPath) }
             }
             Mock Test-Path -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path) if($Path -like "*TempTestDir*") {return $true} else {return $false} }
             Mock Invoke-Command -ModuleName Microsoft.PowerShell.Core -ParameterFilter { $ScriptBlock -like '*ShouldProcess*' } -MockWith { return $false } # Simulate user saying No or -WhatIf
@@ -412,7 +439,7 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
 
         It 'should handle empty locations gracefully' {
             InModuleScope QAOps {
-                 Mock Get-ChildItem -ModuleName Microsoft.PowerShell.Management -MockWith { return @() } # No files found
+                 Mock Get-ChildItem -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path = @('C:\Temp')) return @() } # No files found
             }
             Mock Test-Path -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path) return $true }
 
