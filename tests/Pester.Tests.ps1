@@ -87,7 +87,7 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
         Get-Mock | ForEach-Object { $_.Remove() }
     }
     It '-DryRun should identify old files and create CleanupPlan.json' {
-        $result = Invoke-DiskCleanup -Path 'C:\Temp' -DryRun
+        $result = Invoke-DiskCleanup -Locations 'C:\Temp' -DryRun
         $result | Should -Not -BeNull
     }
 }
