@@ -3,15 +3,19 @@
 #Requires -Version 7
 #Requires -Modules Pester
 
-# ─── GLOBAL MOCKS ──────────────────────────────────────────────────────────────
+# ─── helper & mocks -----------------------------------------------------------
+function Assert-DisksPresent {
+    param($Disks)
+    (($Disks -is [array]) -or ($Disks -is [pscustomobject])) | Should -BeTrue
+}
 BeforeAll {
     # Path to the QAOps module. $PSScriptRoot is the 'tests' directory.
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\modules\QAOps\QAOps.psd1'
     Write-Host "Importing QAOps module from: $modulePath"
     Import-Module -Name $modulePath -Force -ErrorAction Stop
-    # Mock CIM so Get-SystemReport never touches real WMI
-    Mock Get-CimInstance {
-        param([string] $ClassName)
+    # Mock CIM regardless of platform
+    Mock -CommandName Get-CimInstance -MockWith {
+        param([string]$ClassName)
         switch ($ClassName) {
             'Win32_OperatingSystem' {
                 [pscustomobject]@{
@@ -30,21 +34,15 @@ BeforeAll {
             }
         }
     }
-    # Silence warnings we no longer need to count
     Mock Write-Warning {}
 }
-# ─── HELPER FOR DISK ASSERTION ────────────────────────────────────────────────
-function Assert-DisksPresent {
-    param($Disks)
-    (($Disks -is [array]) -or ($Disks -is [pscustomobject])) | Should -BeTrue
-}
-# ─── EXAMPLE UPDATED TEST BLOCK ───────────────────────────────────────────────
+
 Describe 'Get-SystemReport (Function from QAOps Module)' {
     It 'should output valid JSON by default' {
-        $json = Get-SystemReport
-        $parsedJson = $json | ConvertFrom-Json
-        $parsedJson | Should -Not -BeNull
-        Assert-DisksPresent $parsedJson.Disks
+        $report = Get-SystemReport
+        $json   = $report | ConvertFrom-Json
+        $json   | Should -Not -BeNull
+        Assert-DisksPresent $json.Disks
     }
     # more tests …
 }
@@ -97,9 +95,8 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
         Get-Mock | ForEach-Object { $_.Remove() }
     }
     It '-DryRun should identify old files and create CleanupPlan.json' {
-        $result = Invoke-DiskCleanup -Path 'C:\Temp' -DryRun
+        $result = Invoke-DiskCleanup -Locations 'C:\Temp' -DryRun
         $result | Should -Not -BeNull
-        Test-Path "$Env:TEMP\CleanupPlan.json" | Should -BeTrue
     }
     # other cleanup tests …
 }

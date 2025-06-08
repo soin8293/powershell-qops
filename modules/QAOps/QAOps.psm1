@@ -119,6 +119,8 @@ function Invoke-DiskCleanup {
     Identifies and removes files older than a specified number of days from common temporary locations.
     Supports a DryRun mode to preview changes and logs actions to a central log file.
     Requires administrative privileges to write to the default log location in %ProgramData%.
+.PARAMETER Locations
+    An array of paths to scan for cleanup.
 .PARAMETER DryRun
     If specified, the function will only list files that would be deleted and save this plan
     to 'CleanupPlan.json' in the current directory. No files will actually be deleted.
@@ -126,10 +128,10 @@ function Invoke-DiskCleanup {
     Specifies the minimum age in days for files to be considered for deletion.
     Defaults to 14 days.
 .EXAMPLE
-    PS C:\> Invoke-DiskCleanup -DryRun -DaysOld 7
+    PS C:\> Invoke-DiskCleanup -Locations "C:\Temp" -DryRun -DaysOld 7
     Lists files older than 7 days in temp locations that would be deleted and saves the plan.
 .EXAMPLE
-    PS C:\> Invoke-DiskCleanup -DaysOld 30 -Confirm
+    PS C:\> Invoke-DiskCleanup -Locations "C:\Temp", "D:\Temp" -DaysOld 30 -Confirm
     Prompts for confirmation before deleting files older than 30 days from temp locations.
 .OUTPUTS
     PSCustomObject
@@ -138,12 +140,12 @@ function Invoke-DiskCleanup {
 .NOTES
     Default log path: C:\ProgramData\QAOps\Cleanup.log (requires admin rights to create/write).
     Consider running PowerShell as Administrator if using the default log path and not in DryRun mode.
-    Target locations currently include:
-    - User's TEMP folder ($env:TEMP)
-    - Windows TEMP folder ($env:SystemRoot\Temp) - (Requires Admin)
 #>
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Locations,
+
         [Parameter(Mandatory = $false)]
         [switch]$DryRun,
 
@@ -209,40 +211,24 @@ function Invoke-DiskCleanup {
     $cutoffDate = (Get-Date).AddDays(-$DaysOld)
     Write-Verbose "Files older than $cutoffDate (i.e., created before or on this date) will be targeted."
 
-    # Define locations to scan. Add more as needed.
-    $locationsToScan = @(
-        [PSCustomObject]@{ Path = $env:TEMP; Description = "User TEMP"; RequiresAdmin = $false }
-        [PSCustomObject]@{ Path = "$($env:SystemRoot)\Temp"; Description = "Windows TEMP"; RequiresAdmin = $true }
-        # Add other common locations: e.g., Windows Update cache, crash dumps (these often require specific enumeration methods)
-    )
-
-    foreach ($location in $locationsToScan) {
-        Write-Verbose "Scanning location: $($location.Path) ($($location.Description))"
-        if (-not (Test-Path -Path $location.Path)) {
-            Write-Warning "Location not found or inaccessible: $($location.Path)"
-            $summary.Errors.Add("Location not found or inaccessible: $($location.Path)")
+    foreach ($location in $Locations) {
+        Write-Verbose "Scanning location: $location"
+        if (-not (Test-Path -Path $location)) {
+            Write-Warning "Location not found or inaccessible: $location"
+            $summary.Errors.Add("Location not found or inaccessible: $location")
             continue
         }
 
-        # Check for admin rights if location requires it (simple check, might not be foolproof)
-        if ($location.RequiresAdmin -and (-not $DryRun)) {
-            $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-            if (-not $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-                Write-Warning "Skipping $($location.Path) as it requires administrator privileges and script is not running as admin."
-                $summary.Errors.Add("Skipped $($location.Path): Requires admin privileges.")
-                continue
-            }
-        }
         try {
             # Get all files, then filter by LastWriteTime. Recurse through subdirectories.
             # -ErrorAction SilentlyContinue for individual file access errors during enumeration
-            $files = Get-ChildItem -Path $location.Path -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+            $files = Get-ChildItem -Path $location -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
                 $summary.ItemsScanned++
                 $_ # Pass the object along
             } | Where-Object { $_.LastWriteTime -lt $cutoffDate }
 
             if ($null -eq $files) {
-                Write-Verbose "No files older than $DaysOld days found in $($location.Path)."
+                Write-Verbose "No files older than $DaysOld days found in $location."
                 continue
             }
 
@@ -252,7 +238,7 @@ function Invoke-DiskCleanup {
                     Path           = $file.FullName
                     SizeMB         = [math]::Round($file.Length / 1MB, 2)
                     LastWriteTime  = $file.LastWriteTime
-                    LocationDesc   = $location.Description
+                    LocationDesc   = $location
                 }
                 $itemsToClean += $fileInfo
 
@@ -282,7 +268,7 @@ function Invoke-DiskCleanup {
         }
         catch {
             # Catch errors from Get-ChildItem itself if the whole location is problematic
-            $errMsg = "Error processing location '$($location.Path)': $($_.Exception.Message)"
+            $errMsg = "Error processing location '$location': $($_.Exception.Message)"
             Write-Warning $errMsg
             $summary.Errors.Add($errMsg)
         }
