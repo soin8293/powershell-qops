@@ -1,4 +1,4 @@
-# ─── helper (place at top of file) ─────────────────────────────────────────────
+# VERY TOP of tests/Pester.Tests.ps1
 function Assert-DisksPresent {
     param($Disks)
     (($Disks -is [array]) -or ($Disks -is [pscustomobject])) | Should -BeTrue
