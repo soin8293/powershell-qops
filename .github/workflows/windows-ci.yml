@@ -116,7 +116,7 @@ jobs:
           $pesterConfig.CodeCoverage.Path         = './modules/QAOps/QAOps.psm1'
           $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
           $pesterConfig.CodeCoverage.OutputPath   = './Coverage.xml'
-          Invoke-Pester -Configuration $pesterConfig -ErrorAction Stop
+          $result = Invoke-Pester -Configuration $pesterConfig -ErrorAction Stop
           
           # Verify Pester output files were created
           if (Test-Path "./PesterTestResults.xml") {

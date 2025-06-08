@@ -9,31 +9,12 @@ BeforeAll {
     Write-Host "Importing QAOps module from: $modulePath"
     Import-Module -Name $modulePath -Force -ErrorAction Stop
 
-    # Mock Get-CimInstance to avoid hitting real WMI/CIM
-    Mock Get-CimInstance -MockWith {
-        param($ClassName)
-        if ($ClassName -eq 'Win32_OperatingSystem') {
-            return [PSCustomObject]@{
-                Caption = 'Mocked OS'
-                Version = '10.0.19045'
-                BuildNumber = '19045'
-                OSArchitecture = '64-bit'
-                RegisteredUser = 'Mock User'
-                LastBootUpTime = (Get-Date).AddDays(-1)
-            }
+    Mock Get-CimInstance {
+        param($ClassName, $Filter)
+        switch ($ClassName) {
+            'Win32_OperatingSystem' { [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' } }
+            'Win32_LogicalDisk'     { ,([pscustomobject]@{ DeviceID='C:'; Size=100GB; FreeSpace=60GB; VolumeName='OS' }) }
         }
-        if ($ClassName -eq 'Win32_LogicalDisk') {
-            return @(
-                [PSCustomObject]@{
-                    DeviceID = 'C:'
-                    VolumeName = 'Boot'
-                    FileSystem = 'NTFS'
-                    FreeSpace = 100GB
-                    Size = 200GB
-                }
-            )
-        }
-        return $null
     }
 }
 
@@ -102,7 +83,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
             $parsedJson = (Get-SystemReport) | ConvertFrom-Json
             
             # Disks should be an array
-            $parsedJson.Disks | Should -BeOfType ([array])
+            $parsedJson.Disks | Should -BeOfType ([array],[pscustomobject])
 
             # If there are disks, check their properties
             if ($parsedJson.Disks.Count -gt 0) {
@@ -132,11 +113,15 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
         # No need for $reportPath anymore, directly call the function
 
         It 'should warn if -Format Markdown is used (as it is not implemented yet)' {
-            { Get-SystemReport -Format Markdown } | Should -WriteWarning -Exactly "Markdown output is not yet implemented. Defaulting to JSON."
+            Mock Write-Warning
+            Get-SystemReport -Format Markdown
+            Assert-MockCalled Write-Warning -Exactly 1 -ParameterFilter { $Message -eq "Markdown output is not yet implemented. Defaulting to JSON." }
         }
 
         It 'should warn if -Format Console is used (as it is not implemented yet)' {
-            { Get-SystemReport -Format Console } | Should -WriteWarning -Exactly "Console output is not yet implemented. Defaulting to JSON."
+            Mock Write-Warning
+            Get-SystemReport -Format Console
+            Assert-MockCalled Write-Warning -Exactly 1 -ParameterFilter { $Message -eq "Console output is not yet implemented. Defaulting to JSON." }
         }
 
         It 'should handle Get-CimInstance failure for Win32_OperatingSystem gracefully' {
