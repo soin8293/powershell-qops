@@ -217,7 +217,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
     }
 }
 
-Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
+Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
     # Mocked $env:TEMP and $env:SystemRoot for consistent test paths
     # These BeforeEach/AfterEach blocks ensure mocks are clean for each 'It' block.
     # More specific mocks can be defined within 'It' blocks if needed.
@@ -298,7 +298,7 @@ Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
             Mock Test-Path -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path) return $true }
 
 
-            $summary = Fix-DiskCleanup -DryRun -DaysOld $daysOld
+            $summary = Invoke-DiskCleanup -DryRun -DaysOld $daysOld
             
             $summary.OperationMode | Should -Be "DryRun"
             $summary.ItemsIdentified | Should -Be 2 # oldFileUser, oldFileWin
@@ -343,7 +343,7 @@ Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
             Mock Invoke-Command -ModuleName Microsoft.PowerShell.Core -ParameterFilter { $ScriptBlock -like '*ShouldProcess*' } -MockWith { return $true }
 
 
-            $summary = Fix-DiskCleanup -DaysOld $daysOld -Confirm:$false # Using Confirm:$false for non-interactive test
+            $summary = Invoke-DiskCleanup -DaysOld $daysOld -Confirm:$false # Using Confirm:$false for non-interactive test
             
             $summary.OperationMode | Should -Be "Live"
             $summary.ItemsIdentified | Should -Be 1
@@ -374,7 +374,7 @@ Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
             Mock Test-Path -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path) if($Path -like "*TempTestDir*") {return $true} else {return $false} }
             Mock Invoke-Command -ModuleName Microsoft.PowerShell.Core -ParameterFilter { $ScriptBlock -like '*ShouldProcess*' } -MockWith { return $false } # Simulate user saying No or -WhatIf
 
-            $summary = Fix-DiskCleanup -DaysOld $daysOld # ShouldProcess will be invoked by default
+            $summary = Invoke-DiskCleanup -DaysOld $daysOld # ShouldProcess will be invoked by default
             
             $summary.ItemsIdentified | Should -Be 1
             $summary.ItemsDeleted | Should -Be 0
@@ -405,7 +405,7 @@ Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
             # Mock New-Item to verify it's called for the directory
             Mock New-Item -ModuleName Microsoft.PowerShell.Management
 
-            Fix-DiskCleanup -DaysOld 99 # Live run, no files to find, just testing dir creation
+            Invoke-DiskCleanup -DaysOld 99 # Live run, no files to find, just testing dir creation
             
             Assert-MockCalled New-Item -ModuleName Microsoft.PowerShell.Management -Exactly 1 -ParameterFilter { $Path -eq $mockLogPathBase -and $ItemType -eq 'Directory' }
         }
@@ -417,7 +417,7 @@ Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
             Mock Test-Path -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path) return $true }
 
 
-            $summary = Fix-DiskCleanup -DaysOld 1
+            $summary = Invoke-DiskCleanup -DaysOld 1
             $summary.ItemsIdentified | Should -Be 0
             $summary.ItemsDeleted | Should -Be 0
             $summary.Errors.Count | Should -Be 0
@@ -426,7 +426,7 @@ Describe 'Fix-DiskCleanup (Function from QAOps Module)' {
         It 'should report errors if a location is inaccessible' {
             Mock Test-Path -ModuleName Microsoft.PowerShell.Management -MockWith { param($Path) if($Path -eq $mockUserTemp) {return $false} else {return $true} } # User Temp is inaccessible
 
-            $summary = Fix-DiskCleanup -DaysOld 1
+            $summary = Invoke-DiskCleanup -DaysOld 1
             $summary.Errors | Should -ContainMatch "Location not found or inaccessible: $mockUserTemp"
         }
     }

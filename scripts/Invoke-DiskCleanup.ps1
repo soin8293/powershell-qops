@@ -1,9 +1,9 @@
 #Requires -Version 7
 <#
 .SYNOPSIS
-    Cleans up temporary files by calling the Fix-DiskCleanup function from the QAOps module.
+    Cleans up temporary files by calling the Invoke-DiskCleanup function from the QAOps module.
 .DESCRIPTION
-    This script serves as a wrapper to import the QAOps PowerShell module and execute its Fix-DiskCleanup function.
+    This script serves as a wrapper to import the QAOps PowerShell module and execute its Invoke-DiskCleanup function.
     It identifies and removes files older than a specified number of days from common temporary locations.
     Supports a DryRun mode and logs actions.
 .PARAMETER DryRun
@@ -11,10 +11,10 @@
 .PARAMETER DaysOld
     Specifies the minimum age in days for files to be considered for deletion. Defaults to 14.
 .EXAMPLE
-    PS C:\> .\Fix-DiskCleanup.ps1 -DryRun -DaysOld 7
+    PS C:\> .\Invoke-DiskCleanup.ps1 -DryRun -DaysOld 7
     Lists files older than 7 days in temp locations that would be deleted.
 .EXAMPLE
-    PS C:\> .\Fix-DiskCleanup.ps1 -DaysOld 30 -Confirm
+    PS C:\> .\Invoke-DiskCleanup.ps1 -DaysOld 30 -Confirm
     Prompts for confirmation before deleting files older than 30 days.
 .NOTES
     This script depends on the QAOps module being available in the module path or located at '..\modules\QAOps\QAOps.psd1' relative to this script.
@@ -44,10 +44,10 @@ catch {
 
 try {
     # Pass all bound parameters from the script to the function
-    Fix-DiskCleanup @PSBoundParameters
+    Invoke-DiskCleanup @PSBoundParameters
 }
 catch {
-    # The function Fix-DiskCleanup will write its own errors or re-throw.
-    Write-Error "An error occurred while executing Fix-DiskCleanup: $($_.Exception.Message)"
+    # The function Invoke-DiskCleanup will write its own errors or re-throw.
+    Write-Error "An error occurred while executing Invoke-DiskCleanup: $($_.Exception.Message)"
     exit 1 # Ensure script exits with an error code for CI
 }

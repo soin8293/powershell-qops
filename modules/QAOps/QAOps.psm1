@@ -105,13 +105,13 @@ function Get-SystemReport {
         $errorMessage = "An error occurred during system report generation: $($_.Exception.Message)"
         Write-Error $errorMessage
         # Re-throw the exception so the caller (e.g., Pester test or shim script) can handle it
-        throw $_ 
+        throw $_
     }
 }
 
-Export-ModuleMember -Function Get-SystemReport, Fix-DiskCleanup
+Export-ModuleMember -Function Get-SystemReport, Invoke-DiskCleanup
 
-function Fix-DiskCleanup {
+function Invoke-DiskCleanup {
 <#
 .SYNOPSIS
     Cleans up temporary files from specified locations.
@@ -126,10 +126,10 @@ function Fix-DiskCleanup {
     Specifies the minimum age in days for files to be considered for deletion.
     Defaults to 14 days.
 .EXAMPLE
-    PS C:\> Fix-DiskCleanup -DryRun -DaysOld 7
+    PS C:\> Invoke-DiskCleanup -DryRun -DaysOld 7
     Lists files older than 7 days in temp locations that would be deleted and saves the plan.
 .EXAMPLE
-    PS C:\> Fix-DiskCleanup -DaysOld 30 -Confirm
+    PS C:\> Invoke-DiskCleanup -DaysOld 30 -Confirm
     Prompts for confirmation before deleting files older than 30 days from temp locations.
 .OUTPUTS
     PSCustomObject
@@ -151,7 +151,7 @@ function Fix-DiskCleanup {
         [int]$DaysOld = 14
     )
 
-    Write-Verbose "Starting Fix-DiskCleanup (DryRun: $DryRun, DaysOld: $DaysOld)."
+    Write-Verbose "Starting Invoke-DiskCleanup (DryRun: $DryRun, DaysOld: $DaysOld)."
 
     $cleanupLogPathBase = "C:\ProgramData\QAOps" # Base directory for logs
     $cleanupLogFile = Join-Path -Path $cleanupLogPathBase -ChildPath "Cleanup.log"
@@ -186,7 +186,6 @@ function Fix-DiskCleanup {
             # A more robust solution might try alternative log paths.
         }
     }
-    
     # Helper function to log messages
     function Write-CleanupLog {
         param ([string]$Message)
@@ -234,7 +233,6 @@ function Fix-DiskCleanup {
                 continue
             }
         }
-        
         try {
             # Get all files, then filter by LastWriteTime. Recurse through subdirectories.
             # -ErrorAction SilentlyContinue for individual file access errors during enumeration
@@ -294,7 +292,7 @@ function Fix-DiskCleanup {
         Write-Verbose "Dry run complete. Writing cleanup plan to $cleanupPlanFile"
         try {
             $itemsToClean | ConvertTo-Json -Depth 3 | Set-Content -Path $cleanupPlanFile -Encoding UTF8 -ErrorAction Stop
-            Write-Host "Dry run complete. Plan saved to $cleanupPlanFile"
+            Write-Verbose "Dry run complete. Plan saved to $cleanupPlanFile"
         }
         catch {
             $errMsg = "Error writing cleanup plan to '$cleanupPlanFile': $($_.Exception.Message)"
@@ -302,7 +300,7 @@ function Fix-DiskCleanup {
             $summary.Errors.Add($errMsg)
         }
     } else {
-        Write-Host "Cleanup process complete. Summary:"
+        Write-Verbose "Cleanup process complete. Summary:"
         Write-CleanupLog "Cleanup process finished. Scanned: $($summary.ItemsScanned), Identified: $($summary.ItemsIdentified), Deleted: $($summary.ItemsDeleted), Skipped: $($summary.ItemsSkipped)."
     }
 

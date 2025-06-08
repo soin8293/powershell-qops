@@ -59,7 +59,7 @@ ProcessorArchitecture = 'None'
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Get-SystemReport',
-    'Fix-DiskCleanup'
+    'Invoke-DiskCleanup'
     # Add other functions here as they are created, e.g.:
     # 'Invoke-FullAudit'
 )

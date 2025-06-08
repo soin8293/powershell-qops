@@ -21,13 +21,13 @@ PowerShell-QOps is a modular, test-driven system diagnostics and remediation too
 - Robust error handling
 - CI tested with Pester and snapshot validation (snapshot validation is a future test enhancement)
 
-### ✅ `Fix-DiskCleanup`
+### ✅ `Invoke-DiskCleanup`
 - Cleans temporary files from user and system TEMP directories based on age (`-DaysOld` parameter, default 14).
 - Supports `-DryRun` mode to preview deletions in `CleanupPlan.json` without making changes.
 - Live mode uses `ShouldProcess` for `-Confirm` and `-WhatIf` support.
 - Logs actions (identified, deleted, skipped files, errors) to `C:\ProgramData\QAOps\Cleanup.log` (requires admin privileges for default log path).
 - Returns a summary object of actions taken.
-- Includes CLI wrapper script: `scripts\Fix-DiskCleanup.ps1`.
+- Includes CLI wrapper script: `scripts\Invoke-DiskCleanup.ps1`.
 
 ### 🧪 `Invoke-FullAudit` (Upcoming)
 - High-level system scoring
@@ -39,7 +39,7 @@ PowerShell-QOps is a modular, test-driven system diagnostics and remediation too
 - Verifies output schema fields for `Get-SystemReport`
 - Mocks WMI failures for `Get-SystemReport`
 - Validates safe handling of missing data for `Get-SystemReport`
-### ✅ Unit Tests (Pester) for `Fix-DiskCleanup`
+### ✅ Unit Tests (Pester) for `Invoke-DiskCleanup`
 - Verifies dry run logic, `CleanupPlan.json` creation, and no actual deletions.
 - Verifies live run deletions, logging, and `ShouldProcess` interactions using mocks.
 - Tests handling of empty/inaccessible locations and log directory creation.
@@ -62,14 +62,14 @@ Import-Module QAOps
 
 Get-SystemReport -Format JSON
 
-Fix-DiskCleanup -DryRun -DaysOld 7
-Fix-DiskCleanup -DaysOld 30 -Confirm
+Invoke-DiskCleanup -DryRun -DaysOld 7
+Invoke-DiskCleanup -DaysOld 30 -Confirm
 ```
 ### As CLI wrapper scripts
 ```powershell
 .\scripts\Get-SystemReport.ps1 -Format JSON
-.\scripts\Fix-DiskCleanup.ps1 -DryRun -DaysOld 7
-.\scripts\Fix-DiskCleanup.ps1 -DaysOld 30 # Will prompt for confirmation due to Medium ConfirmImpact
+.\scripts\Invoke-DiskCleanup.ps1 -DryRun -DaysOld 7
+.\scripts\Invoke-DiskCleanup.ps1 -DaysOld 30 # Will prompt for confirmation due to Medium ConfirmImpact
 ```
 ---
 ## 🔧 Project Structure
@@ -86,7 +86,7 @@ Fix-DiskCleanup -DaysOld 30 -Confirm
 │       └── QAOps.psd1          # Module manifest
 ├── scripts/                    # Wrapper scripts for CLI use
 │   ├── Get-SystemReport.ps1
-│   ├── Fix-DiskCleanup.ps1
+│   ├── Invoke-DiskCleanup.ps1
 │   └── utils/                  # (Utility scripts, if any)
 ├── tests/
 │   ├── Pester.Tests.ps1        # Pester tests for the module
@@ -126,7 +126,7 @@ All contributors are expected to adhere to our [`CODE_OF_CONDUCT.md`](CODE_OF_CO
 ---
 ## 🧭 Roadmap
 - ✅ `Get-SystemReport` with schema versioning and JSON output.
-- ✅ `Fix-DiskCleanup` with dry-run, logging, and confirmation support.
+- ✅ `Invoke-DiskCleanup` with dry-run, logging, and confirmation support.
 - ⏳ `Invoke-FullAudit` orchestration command.
 - ⏳ Python CLI: `qaops-summary.py` to parse JSON into console tables
 - ⏳ GitHub Pages summary dashboard
