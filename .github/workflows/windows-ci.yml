@@ -97,49 +97,18 @@ jobs:
     - name: Run Pester tests
       shell: pwsh
       run: |
-        Import-Module Pester -ErrorAction Stop # Ensure it's loaded for this step
-        $testFiles = Get-ChildItem -Path './tests' -Filter 'Pester.Tests.ps1' -Recurse
-        if ($null -eq $testFiles) {
-          Write-Warning "No Pester test files named 'Pester.Tests.ps1' found in ./tests. Skipping Pester tests."
-          New-Item -Path "./PesterTestResults.xml" -ItemType File -Force | Out-Null
-          New-Item -Path "./Coverage.xml" -ItemType File -Force | Out-Null
-        } else {
-          Write-Host "Running Pester tests for:"
-          $testFiles.FullName | ForEach-Object { Write-Host "- $_" }
-          
-          $pesterConfig = [PesterConfiguration]::Default
-          $pesterConfig.Run.Path = './tests'
-          $pesterConfig.TestResult.Enabled      = $true
-          $pesterConfig.TestResult.OutputFormat = 'NUnitXml'
-          $pesterConfig.TestResult.OutputPath   = './PesterTestResults.xml'
-          $pesterConfig.CodeCoverage.Enabled      = $true
-          $pesterConfig.CodeCoverage.Path         = './modules/QAOps/QAOps.psm1'
-          $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
-          $pesterConfig.CodeCoverage.OutputPath   = './Coverage.xml'
-          $result = Invoke-Pester -Configuration $pesterConfig -ErrorAction Stop
-          
-          # Verify Pester output files were created
-          if (Test-Path "./PesterTestResults.xml") {
-            Write-Host "PesterTestResults.xml successfully created."
-          } else {
-            Write-Error "PesterTestResults.xml was NOT created by Pester."
-            # Create a dummy file so upload doesn't fail, but this indicates a Pester problem
-            New-Item -Path "./PesterTestResults.xml" -ItemType File -Force -Value "<empty/>" | Out-Null
-          }
-          if (Test-Path "./Coverage.xml") {
-            Write-Host "Coverage.xml successfully created."
-          } else {
-            Write-Error "Coverage.xml was NOT created by Pester."
-            New-Item -Path "./Coverage.xml" -ItemType File -Force -Value "<empty/>" | Out-Null
-          }
-
-          if ($result.FailedCount -gt 0) {
-            Write-Error "Pester tests failed: $($result.FailedCount) failures."
-            exit 1
-          } else {
-            Write-Host "Pester tests passed: $($result.PassedCount) passed."
-          }
-        }
+        Import-Module Pester -ErrorAction Stop
+        $pesterConfig = [PesterConfiguration]::Default
+        $pesterConfig.Run.Path                 = './tests'
+        $pesterConfig.TestResult.Enabled       = $true
+        $pesterConfig.TestResult.OutputFormat  = 'NUnitXml'
+        $pesterConfig.TestResult.OutputPath    = './PesterTestResults.xml'
+        $pesterConfig.CodeCoverage.Enabled     = $true
+        $pesterConfig.CodeCoverage.Path        = './modules/QAOps/QAOps.psm1'
+        $pesterConfig.CodeCoverage.OutputFormat= 'JaCoCo'
+        $pesterConfig.CodeCoverage.OutputPath  = './Coverage.xml'
+        $result = Invoke-Pester -Configuration $pesterConfig -ErrorAction Stop
+        if ($result.FailedCount -gt 0) { exit 1 }
   
     - name: Enforce code coverage >= 80%
       if: success()
