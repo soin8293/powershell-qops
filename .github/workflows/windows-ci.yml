@@ -108,16 +108,15 @@ jobs:
           $testFiles.FullName | ForEach-Object { Write-Host "- $_" }
           
           $pesterConfig = [PesterConfiguration]::Default
-          $pesterConfig.Run.Path = $testFiles.FullName
-          $pesterConfig.TestResult.Enabled = $true
-          $pesterConfig.TestResult.OutputPath = "./PesterTestResults.xml"
-          $pesterConfig.TestResult.Format = 'NUnitXml'
-          $pesterConfig.CodeCoverage.Enabled = $true
-          $pesterConfig.CodeCoverage.Path = "./modules/QAOps/QAOps.psm1"
-          $pesterConfig.CodeCoverage.OutputFormat = "JaCoCo"
-          $pesterConfig.CodeCoverage.OutputPath = "./Coverage.xml"
-  
-          $result = Invoke-Pester -Configuration $pesterConfig -PassThru -ErrorAction Stop
+          $pesterConfig.Run.Path = './tests'
+          $pesterConfig.TestResult.Enabled      = $true
+          $pesterConfig.TestResult.OutputFormat = 'NUnitXml'
+          $pesterConfig.TestResult.OutputPath   = './PesterTestResults.xml'
+          $pesterConfig.CodeCoverage.Enabled      = $true
+          $pesterConfig.CodeCoverage.Path         = './modules/QAOps/QAOps.psm1'
+          $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
+          $pesterConfig.CodeCoverage.OutputPath   = './Coverage.xml'
+          Invoke-Pester -Configuration $pesterConfig -ErrorAction Stop
           
           # Verify Pester output files were created
           if (Test-Path "./PesterTestResults.xml") {
