@@ -1,8 +1,3 @@
-# VERY TOP of tests/Pester.Tests.ps1
-function Assert-DisksPresent {
-    param($Disks)
-    (($Disks -is [array]) -or ($Disks -is [pscustomobject])) | Should -BeTrue
-}
 # ─── GLOBAL Mocks for test scope ──────────────────────────────────────────────
 BeforeAll {
     # Path to the QAOps module. $PSScriptRoot is the 'tests' directory.
@@ -40,7 +35,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
         $json = Get-SystemReport
         $obj  = $json | ConvertFrom-Json
         $obj  | Should -Not -BeNull
-        Assert-DisksPresent $obj.Disks
+        (($obj.Disks -is [array]) -or ($obj.Disks -is [pscustomobject])) | Should -BeTrue
     }
 }
 Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
