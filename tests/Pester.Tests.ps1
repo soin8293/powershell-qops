@@ -10,7 +10,7 @@ BeforeAll {
     Import-Module -Name $modulePath -Force -ErrorAction Stop
 
     # Mock Get-CimInstance to avoid hitting real WMI/CIM
-    Mock Get-CimInstance -ModuleName CimCmdlets -MockWith {
+    Mock Get-CimInstance -MockWith {
         param($ClassName)
         if ($ClassName -eq 'Win32_OperatingSystem') {
             return [PSCustomObject]@{
@@ -141,7 +141,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 
         It 'should handle Get-CimInstance failure for Win32_OperatingSystem gracefully' {
             InModuleScope QAOps { # Ensure Mock is applied where Get-CimInstance is called
-                Mock Get-CimInstance -ModuleName CimCmdlets -MockWith {
+                Mock Get-CimInstance -MockWith {
                     param($ClassName)
                     if ($ClassName -eq 'Win32_OperatingSystem') {
                         throw "Simulated WMI failure for OS"
@@ -169,7 +169,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 
         It 'should handle Get-CimInstance failure for Win32_LogicalDisk gracefully' {
             InModuleScope QAOps {
-                Mock Get-CimInstance -ModuleName CimCmdlets -MockWith {
+                Mock Get-CimInstance -MockWith {
                     param($ClassName, $Filter)
                     if ($ClassName -eq 'Win32_LogicalDisk' -and $Filter -eq "DriveType=3") {
                         throw "Simulated WMI failure for Disks"
@@ -192,7 +192,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 
         It 'should handle no logical disks found gracefully (Get-CimInstance returns $null for Disks)' {
             InModuleScope QAOps {
-                Mock Get-CimInstance -ModuleName CimCmdlets -MockWith {
+                Mock Get-CimInstance -MockWith {
                     param($ClassName, $Filter)
                     if ($ClassName -eq 'Win32_LogicalDisk' -and $Filter -eq "DriveType=3") {
                         return $null
@@ -214,7 +214,7 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 
         It 'should handle no logical disks found gracefully (Get-CimInstance returns empty collection for Disks)' {
             InModuleScope QAOps {
-                Mock Get-CimInstance -ModuleName CimCmdlets -MockWith {
+                Mock Get-CimInstance -MockWith {
                     param($ClassName, $Filter)
                     if ($ClassName -eq 'Win32_LogicalDisk' -and $Filter -eq "DriveType=3") {
                         return @()
