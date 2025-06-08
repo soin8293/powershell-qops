@@ -1,20 +1,16 @@
-# Pester v5 Tests for PowerShell-QOps
-
-#Requires -Version 7
-#Requires -Modules Pester
-
-# ─── helper & mocks -----------------------------------------------------------
+# ─── helper (place at top of file) ─────────────────────────────────────────────
 function Assert-DisksPresent {
     param($Disks)
     (($Disks -is [array]) -or ($Disks -is [pscustomobject])) | Should -BeTrue
 }
+# ─── GLOBAL Mocks for test scope ──────────────────────────────────────────────
 BeforeAll {
     # Path to the QAOps module. $PSScriptRoot is the 'tests' directory.
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\modules\QAOps\QAOps.psd1'
     Write-Host "Importing QAOps module from: $modulePath"
     Import-Module -Name $modulePath -Force -ErrorAction Stop
-    # Mock CIM regardless of platform
-    Mock -CommandName Get-CimInstance -MockWith {
+    # Inject mock directly into the QAOps module
+    Mock -CommandName Get-CimInstance -ModuleName QAOps -MockWith {
         param([string]$ClassName)
         switch ($ClassName) {
             'Win32_OperatingSystem' {
@@ -34,17 +30,18 @@ BeforeAll {
             }
         }
     }
+
+    # Silence warnings if still mocked
     Mock Write-Warning {}
 }
-
+# ─── TEST BLOCK EXAMPLES (update all similar) ─────────────────────────────────
 Describe 'Get-SystemReport (Function from QAOps Module)' {
     It 'should output valid JSON by default' {
-        $report = Get-SystemReport
-        $json   = $report | ConvertFrom-Json
-        $json   | Should -Not -BeNull
-        Assert-DisksPresent $json.Disks
+        $json = Get-SystemReport
+        $obj  = $json | ConvertFrom-Json
+        $obj  | Should -Not -BeNull
+        Assert-DisksPresent $obj.Disks
     }
-    # more tests …
 }
 Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
     $mockUserTemp = Join-Path $PSScriptRoot "TempTestDir_User"
@@ -98,5 +95,4 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
         $result = Invoke-DiskCleanup -Locations 'C:\Temp' -DryRun
         $result | Should -Not -BeNull
     }
-    # other cleanup tests …
 }
