@@ -65,10 +65,13 @@ jobs:
           Write-Host "No files to lint."
           New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
         } else {
-          # --- cast to strings right at the call ---
-          $SAresults = Invoke-ScriptAnalyzer `
-                         -Path ($lintPaths | ForEach-Object { $_.ToString() }) `
-                         -Recurse -ErrorAction Stop
+          # --- robust cast to pure string array ---
+          $lintPathStrings = $lintPaths | ForEach-Object {
+              if ($_ -is [string]) { $_ }
+              elseif ($_ -is [System.IO.FileInfo]) { $_.FullName }
+              else { $_.ToString() }
+          }
+          $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
           $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
           if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
             Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
