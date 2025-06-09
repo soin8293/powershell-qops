@@ -88,8 +88,8 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
     }
     It '-DryRun should identify old files and create CleanupPlan.json' {
         $testDir = Join-Path $TestDrive 'Temp'
-        New-Item -ItemType Directory -Path $testDir -Force | Out-Null   # make sure it exists
-        $result = Invoke-DiskCleanup -Path $testDir -DryRun
-        $result | Should -Not -BeNull
+        New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+        $result  = Invoke-DiskCleanup -Path $testDir -DryRun
+        $result  | Should -Not -BeNull
     }
 }
