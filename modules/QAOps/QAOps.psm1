@@ -292,3 +292,5 @@ function Invoke-DiskCleanup {
 
     return $summary
 }
+
+Export-ModuleMember -Function Get-SystemReport, Invoke-DiskCleanup

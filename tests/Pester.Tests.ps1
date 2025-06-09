@@ -6,17 +6,11 @@ function Assert-DisksPresent {
 BeforeAll {
     Import-Module (Join-Path $PSScriptRoot '..' 'modules' 'QAOps' 'QAOps.psd1') -Force -ErrorAction Stop
 
-    InModuleScope 'QAOps' {
-        Mock Get-CimInstance -MockWith {
-            param([string]$ClassName)
-            switch ($ClassName) {
-                'Win32_OperatingSystem' {
-                    [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' }
-                }
-                'Win32_LogicalDisk' {
-                    ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB; VolumeName='OS' })
-                }
-            }
+    Mock Get-CimInstance -ModuleName QAOps -MockWith {
+        param($ClassName)
+        switch ($ClassName) {
+            'Win32_OperatingSystem' { [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' } }
+            'Win32_LogicalDisk'     { ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB }) }
         }
     }
     Mock Write-Warning {}
@@ -33,9 +27,9 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 
 Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
     It '-DryRun should identify old files and create CleanupPlan.json' {
-        $testDir = Join-Path $TestDrive 'Temp'
-        New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-        $result = Invoke-DiskCleanup -Locations $testDir -DryRun
+        $tmp = Join-Path $TestDrive 'Temp'
+        New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+        $result = Invoke-DiskCleanup -Locations $tmp -DryRun
         $result | Should -Not -BeNull
     }
 }

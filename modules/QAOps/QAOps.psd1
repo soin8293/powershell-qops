@@ -60,8 +60,6 @@ ProcessorArchitecture = 'None'
 FunctionsToExport = @(
     'Get-SystemReport',
     'Invoke-DiskCleanup'
-    # Add other functions here as they are created, e.g.:
-    # 'Invoke-FullAudit'
 )
 
 # Cmdlets to export from this module
