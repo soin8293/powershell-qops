@@ -38,12 +38,6 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 }
 # ─── DiskCleanup dry-run test (fixes null path) ────────────────────
 Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
-    BeforeEach {
-        # Mocks for this describe block
-    }
-    AfterEach {
-        # Cleanup for this describe block
-    }
     It '-DryRun should identify old files and create CleanupPlan.json' {
         $testDir = Join-Path $TestDrive 'Temp'
         New-Item -ItemType Directory -Path $testDir -Force | Out-Null
