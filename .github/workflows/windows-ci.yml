@@ -53,22 +53,22 @@ jobs:
       shell: pwsh
       run: |
         $paths = @(
-          'scripts\utils\Convert-ToPrettyJson.ps1',
-          'scripts\utils\Write-ColoredTable.ps1',
-          'scripts\Get-SystemReport.ps1',
-          'scripts\Invoke-DiskCleanup.ps1',
-          'scripts\Invoke-FullAudit.ps1',
-          'modules\QAOps\QAOps.psm1'
+          'scripts/utils/Convert-ToPrettyJson.ps1',
+          'scripts/utils/Write-ColoredTable.ps1',
+          'scripts/Get-SystemReport.ps1',
+          'scripts/Invoke-DiskCleanup.ps1',
+          'scripts/Invoke-FullAudit.ps1',
+          'modules/QAOps/QAOps.psm1'
         )
         $lintPaths = $paths | Where-Object { Test-Path $_ }
         if ($lintPaths.Count -eq 0) {
           Write-Host "No files to lint."
           New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
         } else {
-          $lintPaths = $lintPaths | ForEach-Object {
-              if ($_ -is [System.IO.FileInfo]) { $_.FullName } else { $_ }
-          }
-          $SAresults = Invoke-ScriptAnalyzer -Path $lintPaths -Recurse -ErrorAction Stop
+          # --- cast to strings right at the call ---
+          $SAresults = Invoke-ScriptAnalyzer `
+                         -Path ($lintPaths | ForEach-Object { $_.ToString() }) `
+                         -Recurse -ErrorAction Stop
           $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
           if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
             Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
