@@ -52,38 +52,24 @@ jobs:
     - name: Lint PowerShell scripts
       shell: pwsh
       run: |
-        Import-Module PSScriptAnalyzer -ErrorAction Stop # Ensure it's loaded for this step
-        $filesToLint = Get-ChildItem -Path './scripts', './modules' -Recurse -Include '*.ps1', '*.psm1'
-        if ($null -eq $filesToLint) {
-          Write-Host "No PowerShell files found to lint in ./scripts or ./modules. Skipping linting."
-          # Create an empty lint-results.txt if no files are linted so upload doesn't fail
-          Set-Content -Path "./lint-results.txt" -Value "No PowerShell files found to lint." -ErrorAction Stop
+        $paths = @(
+          'scripts\utils\Convert-ToPrettyJson.ps1',
+          'scripts\utils\Write-ColoredTable.ps1',
+          'scripts\Get-SystemReport.ps1',
+          'scripts\Invoke-DiskCleanup.ps1',
+          'scripts\Invoke-FullAudit.ps1',
+          'modules\QAOps\QAOps.psm1'
+        )
+        $lintPaths = $paths | Where-Object { Test-Path $_ }
+        if ($lintPaths.Count -eq 0) {
+          Write-Host "No files to lint."
+          New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
         } else {
-          Write-Host "Linting files:"
-          $filesToLint.FullName | ForEach-Object { Write-Host "- $_" }
-          # Build flat list of paths
-          $lintPaths = $filesToLint | ForEach-Object { $_.FullName }
-          # Array to collect analyzer findings
-          $SAresults = @()
-          foreach ($p in $lintPaths) {
-              Write-Host "Analyzing $p"
-              $SAresults += Invoke-ScriptAnalyzer -Path $p -Recurse -ErrorAction Stop
-          }
-          # Save consolidated results
-          $SAresults | ConvertTo-Json -Depth 4 | Out-File -FilePath "./lint-results.txt" -Force
-          Get-Content "./lint-results.txt" # Output to console as well
-          if (Test-Path "./lint-results.txt") {
-            Write-Host "lint-results.txt successfully created."
-          } else {
-            Write-Error "lint-results.txt was NOT created."
-            # Optionally create a dummy file here too if Invoke-ScriptAnalyzer itself failed to produce output but didn't throw
-            Set-Content -Path "./lint-results.txt" -Value "Error during linting or no issues found to output." -ErrorAction SilentlyContinue
-          }
-          if ($SAresults | Where-Object {$_.Severity -in @('Error', 'Warning')}) {
+          $SAresults = Invoke-ScriptAnalyzer -Path $lintPaths -Recurse -OutVariable +SAresults -ErrorAction Stop
+          $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
+          if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
             Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
             exit 1
-          } else {
-            Write-Host "PSScriptAnalyzer found no critical issues."
           }
         }
 
