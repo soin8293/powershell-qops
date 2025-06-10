@@ -43,26 +43,24 @@ jobs:
         Test-ModuleManifest -Path ./modules/QAOps/QAOps.psd1 -ErrorAction Stop | Out-Null
         Write-Host "Module manifest ./modules/QAOps/QAOps.psd1 is valid."
 
-  - name: Lint PowerShell scripts
-    shell: pwsh
-    run: |
-      # 1. Collect all PowerShell source files we care about
-      $lintPathStrings = Get-ChildItem -Path 'scripts','modules/QAOps' `
-                      -Include *.ps1, *.psm1 -Recurse -File `
-                      | Select-Object -Expand FullName
-      if (-not $lintPathStrings) {
-          Write-Host "No files to lint."
-          New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
-          exit 0
-      }
-      # 2. Run ScriptAnalyzer
-      $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
-      $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
-      # 3. Fail on Error or Warning severities
-      if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
-          Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
-          exit 1
-      }
+    - name: Lint PowerShell scripts
+      shell: pwsh
+      run: |
+        # 1. Collect all PowerShell source files we care about
+        $lintPathStrings = Get-ChildItem -Path 'scripts','modules/QAOps' -Include *.ps1, *.psm1 -Recurse -File | Select-Object -Expand FullName
+        if (-not $lintPathStrings) {
+            Write-Host "No files to lint."
+            New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
+            exit 0
+        }
+        # 2. Run ScriptAnalyzer
+        $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
+        $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
+        # 3. Fail on Error or Warning severities
+        if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
+            Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
+            exit 1
+        }
     - name: Upload Linter Results
       if: always()
       uses: actions/upload-artifact@v4
