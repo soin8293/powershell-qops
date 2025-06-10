@@ -23,16 +23,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Removed 'Set up PowerShell' step as PS7+ is pre-installed
-
     - name: Install PSScriptAnalyzer and Pester (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
         Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -Confirm:$false -ErrorAction Stop
         Install-Module Pester -Scope CurrentUser -Force -Confirm:$false -ErrorAction Stop
-        # Import-Module PSScriptAnalyzer -ErrorAction Stop # Not strictly needed before Test-ModuleManifest
-        # Import-Module Pester -ErrorAction Stop
 
     - name: Install PSScriptAnalyzer and Pester (Linux)
       if: runner.os == 'Linux'
@@ -40,14 +36,19 @@ jobs:
       run: |
         Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -Confirm:$false -SkipPublisherCheck -ErrorAction Stop
         Install-Module Pester -Scope CurrentUser -Force -Confirm:$false -SkipPublisherCheck -ErrorAction Stop
-        # Import-Module PSScriptAnalyzer -ErrorAction Stop
-        # Import-Module Pester -ErrorAction Stop
         
     - name: Validate Module Manifest (QAOps.psd1)
       shell: pwsh
       run: |
         Test-ModuleManifest -Path ./modules/QAOps/QAOps.psd1 -ErrorAction Stop | Out-Null
         Write-Host "Module manifest ./modules/QAOps/QAOps.psd1 is valid."
+
+    - name: DEBUG - list types passed to ScriptAnalyzer
+      shell: pwsh
+      run: |
+        $lintPathStrings | ForEach-Object {
+          "$($_) — type = $($_.GetType().FullName)"
+        }
 
     - name: Lint PowerShell scripts
       shell: pwsh
@@ -65,11 +66,10 @@ jobs:
           Write-Host "No files to lint."
           New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
         } else {
-          # --- robust cast to pure string array ---
+          # --- exact, safe cast ---
           $lintPathStrings = $lintPaths | ForEach-Object {
-              if ($_ -is [string]) { $_ }
-              elseif ($_ -is [System.IO.FileInfo]) { $_.FullName }
-              else { $_.ToString() }
+              if ($_ -is [System.IO.FileInfo]) { $_.FullName }
+              else                            { [string]$_ }
           }
           $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
           $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
@@ -149,15 +149,6 @@ jobs:
         name: coverage-report-${{ matrix.os }}
         path: ./Coverage.xml
         
-    # Codecov upload can be added here if desired, typically for one OS (e.g., windows-latest)
-    # - name: Upload to Codecov
-    #   if: success() && matrix.os == 'windows-latest'
-    #   uses: codecov/codecov-action@v3
-    #   with:
-    #     token: ${{ secrets.CODECOV_TOKEN }}
-    #     files: ./Coverage.xml
-    #     fail_ci_if_error: true
-
   release:
     name: Create GitHub Release
     if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
