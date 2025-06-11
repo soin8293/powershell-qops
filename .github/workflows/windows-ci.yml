@@ -43,42 +43,33 @@ jobs:
         Test-ModuleManifest -Path ./modules/QAOps/QAOps.psd1 -ErrorAction Stop | Out-Null
         Write-Host "Module manifest ./modules/QAOps/QAOps.psd1 is valid."
 
-    - name: DEBUG - list types passed to ScriptAnalyzer
-      shell: pwsh
-      run: |
-        $lintPathStrings | ForEach-Object {
-          "$($_) — type = $($_.GetType().FullName)"
-        }
-
     - name: Lint PowerShell scripts
       shell: pwsh
       run: |
-        $paths = @(
-          'scripts/utils/Convert-ToPrettyJson.ps1',
-          'scripts/utils/Write-ColoredTable.ps1',
-          'scripts/Get-SystemReport.ps1',
-          'scripts/Invoke-DiskCleanup.ps1',
-          'scripts/Invoke-FullAudit.ps1',
-          'modules/QAOps/QAOps.psm1'
-        )
-        $lintPaths = $paths | Where-Object { Test-Path $_ }
-        if ($lintPaths.Count -eq 0) {
-          Write-Host "No files to lint."
-          New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
+        # 1. Collect all PowerShell source files we care about
+        $lintPathStrings = Get-ChildItem -Path 'scripts','modules/QAOps' -Include *.ps1, *.psm1 -Recurse -File | Select-Object -Expand FullName
+        # DEBUG - dump lintPathStrings for ScriptAnalyzer troubleshooting
+        if ($null -eq $lintPathStrings) {
+          Write-Host "lintPathStrings is NULL or undefined"
         } else {
-          # --- exact, safe cast ---
-          $lintPathStrings = $lintPaths | ForEach-Object {
-              if ($_ -is [System.IO.FileInfo]) { $_.FullName }
-              else                            { [string]$_ }
-          }
-          $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
-          $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
-          if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
-            Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
-            exit 1
+          Write-Host "lintPathStrings type: $($lintPathStrings.GetType().FullName)"
+          $lintPathStrings | ForEach-Object {
+            Write-Host "$_  —  type = $($_.GetType().FullName)"
           }
         }
-
+        if (-not $lintPathStrings) {
+            Write-Host "No files to lint."
+            New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
+            exit 0
+        }
+        # 2. Run ScriptAnalyzer
+        $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
+        $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
+        # 3. Fail on Error or Warning severities
+        if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
+            Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
+            exit 1
+        }
     - name: Upload Linter Results
       if: always()
       uses: actions/upload-artifact@v4
