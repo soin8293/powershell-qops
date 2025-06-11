@@ -109,8 +109,6 @@ function Get-SystemReport {
     }
 }
 
-Export-ModuleMember -Function Get-SystemReport, Invoke-DiskCleanup
-
 function Invoke-DiskCleanup {
 <#
 .SYNOPSIS
@@ -262,7 +260,7 @@ function Invoke-DiskCleanup {
                         $summary.ItemsSkipped++
                     }
                 } else {
-                     Write-Verbose "DRYRUN: Would delete $($file.FullName) (LastWrite: $($file.LastWriteTime))"
+                        Write-Verbose "DRYRUN: Would delete $($file.FullName) (LastWrite: $($file.LastWriteTime))"
                 }
             }
         }
