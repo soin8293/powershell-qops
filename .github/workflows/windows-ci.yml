@@ -63,6 +63,7 @@ jobs:
             exit 0
         }
         # 2. Run ScriptAnalyzer
+        [string[]] $lintPathStrings = $lintPathStrings
         $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
         $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
         # 3. Fail on Error or Warning severities
