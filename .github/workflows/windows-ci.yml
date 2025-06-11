@@ -46,27 +46,18 @@ jobs:
     - name: Lint PowerShell scripts
       shell: pwsh
       run: |
-        # 1. Collect all PowerShell source files we care about
         $lintPathStrings = Get-ChildItem -Path 'scripts','modules/QAOps' -Include *.ps1, *.psm1 -Recurse -File | Select-Object -Expand FullName
-        # DEBUG - dump lintPathStrings for ScriptAnalyzer troubleshooting
-        if ($null -eq $lintPathStrings) {
-          Write-Host "lintPathStrings is NULL or undefined"
-        } else {
-          Write-Host "lintPathStrings type: $($lintPathStrings.GetType().FullName)"
-          $lintPathStrings | ForEach-Object {
-            Write-Host "$_  —  type = $($_.GetType().FullName)"
-          }
-        }
         if (-not $lintPathStrings) {
             Write-Host "No files to lint."
             New-Item -Path "./lint-results.txt" -ItemType File -Force | Out-Null
             exit 0
         }
-        # 2. Run ScriptAnalyzer
-        [string[]] $lintPathStrings = $lintPathStrings
-        $SAresults = Invoke-ScriptAnalyzer -Path $lintPathStrings -Recurse -ErrorAction Stop
+        $SAresults = @()
+        foreach ($p in $lintPathStrings) {
+            Write-Host "Analyzing $p"
+            $SAresults += Invoke-ScriptAnalyzer -Path $p -Recurse -ErrorAction Stop
+        }
         $SAresults | ConvertTo-Json -Compress | Out-File ./lint-results.txt -Force
-        # 3. Fail on Error or Warning severities
         if ($SAresults.Severity -contains 'Error' -or $SAresults.Severity -contains 'Warning') {
             Write-Error "PSScriptAnalyzer found issues with Severity Error or Warning."
             exit 1
