@@ -39,10 +39,22 @@ function Get-SystemReport {
         $osInfo = $null
         try {
             Write-Verbose "Gathering Operating System information..."
-            $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop | Select-Object @{Name="OSName";Expression={$_.Caption}}, @{Name="OSVersion";Expression={$_.Version}}, @{Name="OSBuildNumber";Expression={$_.BuildNumber}}, @{Name="OSArchitecture";Expression={$_.OSArchitecture}}, @{Name="RegisteredUser";Expression={$_.RegisteredUser}}, @{Name="LastBootUpTime";Expression={$_.LastBootUpTime}}
-            if (-not $osInfo) {
-                Write-Warning "OS information query returned no data."
-                $osInfo = @{ Error = "OS information query returned no data." }
+            if (Get-Command -Name Get-CimInstance -ErrorAction SilentlyContinue) {
+                $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop | Select-Object @{Name="OSName";Expression={$_.Caption}}, @{Name="OSVersion";Expression={$_.Version}}, @{Name="OSBuildNumber";Expression={$_.BuildNumber}}, @{Name="OSArchitecture";Expression={$_.OSArchitecture}}, @{Name="RegisteredUser";Expression={$_.RegisteredUser}}, @{Name="LastBootUpTime";Expression={$_.LastBootUpTime}}
+                if (-not $osInfo) {
+                    Write-Warning "OS information query returned no data."
+                    $osInfo = @{ Error = "OS information query returned no data." }
+                }
+            } else {
+                Write-Warning "Get-CimInstance is not available on this platform. Falling back to basic OS info."
+                $osInfo = [PSCustomObject]@{
+                    OSName          = $PSVersionTable.OS
+                    OSVersion       = [System.Environment]::OSVersion.Version.ToString()
+                    OSBuildNumber   = [System.Environment]::OSVersion.Version.Build
+                    OSArchitecture  = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+                    RegisteredUser  = $env:USER
+                    LastBootUpTime  = $null
+                }
             }
         }
         catch {
@@ -54,12 +66,17 @@ function Get-SystemReport {
         $diskInfo = @() # Default to empty array
         try {
             Write-Verbose "Gathering Disk information..."
-            $rawDiskInfo = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction Stop
-            if ($rawDiskInfo) {
-                $diskInfo = $rawDiskInfo | Select-Object @{Name="DiskDeviceID";Expression={$_.DeviceID}}, @{Name="DiskVolumeName";Expression={$_.VolumeName}}, @{Name="DiskFileSystem";Expression={$_.FileSystem}}, @{Name="DiskFreeSpaceGB";Expression={[math]::Round($_.FreeSpace / 1GB, 2)}}, @{Name="DiskTotalSizeGB";Expression={[math]::Round($_.Size / 1GB, 2)}}
+            if (Get-Command -Name Get-CimInstance -ErrorAction SilentlyContinue) {
+                $rawDiskInfo = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction Stop
+                if ($rawDiskInfo) {
+                    $diskInfo = $rawDiskInfo | Select-Object @{Name="DiskDeviceID";Expression={$_.DeviceID}}, @{Name="DiskVolumeName";Expression={$_.VolumeName}}, @{Name="DiskFileSystem";Expression={$_.FileSystem}}, @{Name="DiskFreeSpaceGB";Expression={[math]::Round($_.FreeSpace / 1GB, 2)}}, @{Name="DiskTotalSizeGB";Expression={[math]::Round($_.Size / 1GB, 2)}}
+                } else {
+                    Write-Warning "No logical disks (DriveType=3) found or disk information query returned no data."
+                    # $diskInfo remains an empty array, which is the desired state for "no disks"
+                }
             } else {
-                Write-Warning "No logical disks (DriveType=3) found or disk information query returned no data."
-                # $diskInfo remains an empty array, which is the desired state for "no disks"
+                Write-Warning "Get-CimInstance is not available on this platform. Falling back to Get-PSDrive."
+                $diskInfo = Get-PSDrive -PSProvider FileSystem | Select-Object @{Name="DiskDeviceID";Expression={$_.Root}}, @{Name="DiskVolumeName";Expression={$_.Name}}, @{Name="DiskFileSystem";Expression={$null}}, @{Name="DiskFreeSpaceGB";Expression={[math]::Round($_.Free / 1GB, 2)}}, @{Name="DiskTotalSizeGB";Expression={[math]::Round(($_.Free + $_.Used) / 1GB, 2)}}
             }
         }
         catch {
@@ -153,7 +170,11 @@ function Invoke-DiskCleanup {
 
     Write-Verbose "Starting Invoke-DiskCleanup (DryRun: $DryRun, DaysOld: $DaysOld)."
 
-    $cleanupLogPathBase = "C:\ProgramData\QAOps" # Base directory for logs
+    if ($IsWindows) {
+        $cleanupLogPathBase = "C:\ProgramData\QAOps" # Base directory for logs
+    } else {
+        $cleanupLogPathBase = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "QAOps"
+    }
     $cleanupLogFile = Join-Path -Path $cleanupLogPathBase -ChildPath "Cleanup.log"
     $cleanupPlanFile = "CleanupPlan.json" # In current working directory for DryRun
 
