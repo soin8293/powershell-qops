@@ -175,9 +175,16 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
         Mock -CommandName Add-Content -ModuleName QAOps -MockWith { param($Path, $Value, $Encoding, $ErrorAction) $null }
         Mock -CommandName Remove-Item -ModuleName QAOps -MockWith { param($Path, $Force, $ErrorAction) throw "Delete failed" }
 
-        $result = Invoke-DiskCleanup -Locations $tmp -DaysOld 7
-        $result.Errors.Count | Should -BeGreaterThan 0
-        $result.ItemsSkipped | Should -BeGreaterThan 0
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        try {
+            $result = Invoke-DiskCleanup -Locations $tmp -DaysOld 7 -ErrorAction SilentlyContinue
+            $result.Errors.Count | Should -BeGreaterThan 0
+            $result.ItemsSkipped | Should -BeGreaterThan 0
+        }
+        finally {
+            $ErrorActionPreference = $prevEap
+        }
     }
 
     It 'should skip deletes when -WhatIf is used' {
@@ -240,13 +247,16 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
 
         Mock -CommandName Set-Content -ModuleName QAOps -MockWith { param($Path, $Value, $Encoding, $ErrorAction) throw "write failed" }
 
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
         Push-Location $TestDrive
         try {
-            $result = Invoke-DiskCleanup -Locations $tmp -DryRun -DaysOld 7
+            $result = Invoke-DiskCleanup -Locations $tmp -DryRun -DaysOld 7 -ErrorAction SilentlyContinue
             $result.Errors.Count | Should -BeGreaterThan 0
         }
         finally {
             Pop-Location
+            $ErrorActionPreference = $prevEap
         }
     }
 }
