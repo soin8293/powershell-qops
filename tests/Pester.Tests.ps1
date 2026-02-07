@@ -11,9 +11,11 @@ BeforeAll {
 Describe 'Get-SystemReport (Function from QAOps Module)' {
     It 'should output valid JSON by default' {
         Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_OperatingSystem' } -MockWith {
+            param($ClassName, $Filter, $ErrorAction)
             [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' }
         }
         Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_LogicalDisk' } -MockWith {
+            param($ClassName, $Filter, $ErrorAction)
             ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB })
         }
 
@@ -25,9 +27,11 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
 
     It 'should handle Markdown and Console formats by returning JSON fallback' {
         Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_OperatingSystem' } -MockWith {
+            param($ClassName, $Filter, $ErrorAction)
             [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' }
         }
         Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_LogicalDisk' } -MockWith {
+            param($ClassName, $Filter, $ErrorAction)
             ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB })
         }
 
@@ -38,8 +42,14 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
     }
 
     It 'should return report even when CIM queries fail' {
-        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_OperatingSystem' } -MockWith { throw "OS lookup failed" }
-        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_LogicalDisk' } -MockWith { $null }
+        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_OperatingSystem' } -MockWith {
+            param($ClassName, $Filter, $ErrorAction)
+            throw "OS lookup failed"
+        }
+        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_LogicalDisk' } -MockWith {
+            param($ClassName, $Filter, $ErrorAction)
+            $null
+        }
 
         $json = Get-SystemReport
         $obj  = $json | ConvertFrom-Json
@@ -96,9 +106,18 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
         New-Item -ItemType File -Path $file -Force | Out-Null
         (Get-Item $file).LastWriteTime = (Get-Date).AddDays(-30)
 
-        Mock -CommandName New-Item -ModuleName QAOps { $null }
-        Mock -CommandName Add-Content -ModuleName QAOps { $null }
-        Mock -CommandName Remove-Item -ModuleName QAOps { $null }
+        Mock -CommandName New-Item -ModuleName QAOps -MockWith {
+            param($Path, $ItemType, $Force, $ErrorAction)
+            $null
+        }
+        Mock -CommandName Add-Content -ModuleName QAOps -MockWith {
+            param($Path, $Value, $Encoding, $ErrorAction)
+            $null
+        }
+        Mock -CommandName Remove-Item -ModuleName QAOps -MockWith {
+            param($Path, $Force, $ErrorAction)
+            $null
+        }
 
         $result = Invoke-DiskCleanup -Locations $tmp -DaysOld 7
         $result.ItemsIdentified | Should -BeGreaterThan 0
