@@ -6,19 +6,17 @@ function Assert-DisksPresent {
 BeforeAll {
     # 1. Import module first
     Import-Module (Join-Path $PSScriptRoot '..' 'modules' 'QAOps' 'QAOps.psd1') -Force -ErrorAction Stop
-    # 2. Mock CIM for the module AFTER import
-    Mock -CommandName Get-CimInstance -ModuleName QAOps -MockWith {
-        param([string]$ClassName)
-        switch ($ClassName) {
-            'Win32_OperatingSystem' { [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' } }
-            'Win32_LogicalDisk'     { ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB }) }
-        }
-    }
-    Mock Write-Warning {}
 }
 
 Describe 'Get-SystemReport (Function from QAOps Module)' {
     It 'should output valid JSON by default' {
+        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_OperatingSystem' } -MockWith {
+            [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' }
+        }
+        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_LogicalDisk' } -MockWith {
+            ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB })
+        }
+
         $json = Get-SystemReport
         $obj  = $json | ConvertFrom-Json
         $obj  | Should -Not -BeNull
@@ -26,6 +24,13 @@ Describe 'Get-SystemReport (Function from QAOps Module)' {
     }
 
     It 'should handle Markdown and Console formats by returning JSON fallback' {
+        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_OperatingSystem' } -MockWith {
+            [pscustomobject]@{ Caption='Windows'; Version='10.0'; BuildNumber='19045' }
+        }
+        Mock -CommandName Get-CimInstance -ModuleName QAOps -ParameterFilter { $ClassName -eq 'Win32_LogicalDisk' } -MockWith {
+            ,([pscustomobject]@{ DeviceID='C:'; Size=128GB; FreeSpace=64GB })
+        }
+
         $jsonMarkdown = Get-SystemReport -Format Markdown
         $jsonConsole  = Get-SystemReport -Format Console
         ($jsonMarkdown | ConvertFrom-Json).SchemaVersion | Should -Not -BeNull

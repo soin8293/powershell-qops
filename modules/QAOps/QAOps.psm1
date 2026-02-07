@@ -166,7 +166,7 @@ function Invoke-DiskCleanup {
         ItemsSkipped    = 0
         LogFile         = if (-not $DryRun) { $cleanupLogFile } else { $null }
         PlanFile        = if ($DryRun) { $cleanupPlanFile } else { $null }
-        Errors          = @()
+        Errors          = [System.Collections.Generic.List[string]]::new()
     }
 
     # Ensure log directory exists if not in DryRun
