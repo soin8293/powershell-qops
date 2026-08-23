@@ -5,17 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - YYYY-MM-DD
+## [Unreleased]
 
 ### Added
-- `Fix-DiskCleanup` feature:
-    - New function `Fix-DiskCleanup` in `QAOps.psm1` to clean temporary files based on age.
+- `Invoke-DiskCleanup` feature:
+    - New function `Invoke-DiskCleanup` in `QAOps.psm1` to clean temporary files based on age.
     - Supports `-DryRun` mode to output a `CleanupPlan.json` without deleting files.
     - Live mode uses `ShouldProcess` for confirmation and logs actions to `%ProgramData%\QAOps\Cleanup.log`.
     - Includes wrapper script `scripts/Fix-DiskCleanup.ps1`.
-- Pester tests for `Fix-DiskCleanup`:
+- Pester tests for `Invoke-DiskCleanup`:
     - Unit tests for dry run, live run (deletion and skipping), logging, and edge cases using mocks.
-- Updated `QAOps.psd1` to export `Fix-DiskCleanup` and include its wrapper script in `FileList`.
+- Updated `QAOps.psd1` to export `Invoke-DiskCleanup`.
 
 ## [0.1.0] - YYYY-MM-DD
 

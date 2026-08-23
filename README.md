@@ -1,5 +1,5 @@
 # PowerShell-QOps
-*A cross-platform PowerShell module for system auditing, cleanup, and self-healing tasks with automated testing and CI/CD.*
+*A cross-platform PowerShell module for system reporting and guarded temporary-file cleanup, with automated testing and CI.*
 
 [![Build](https://github.com/soin8293/powershell-qops/actions/workflows/windows-ci.yml/badge.svg)](https://github.com/soin8293/powershell-qops/actions/workflows/windows-ci.yml)
 [![PowerShell Version](https://img.shields.io/badge/PowerShell-7%2B-blue)](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows)
@@ -7,7 +7,7 @@
 ---
 ## 📜 Overview
 PowerShell-QOps is a modular, test-driven system diagnostics and remediation toolkit for Windows and PowerShell Core environments. Designed for IT professionals and QA engineers, it features:
-- Modular PowerShell cmdlets for system reporting and cleanup
+- Modular PowerShell functions for system reporting and cleanup
 - Cross-platform compatibility (Windows + Ubuntu via PowerShell 7)
 - CI/CD with linting, Pester testing, and enforced code coverage
 - JSON output for integration into dashboards or monitoring tools
@@ -110,13 +110,13 @@ Key features:
 - **Testing**: Pester v5, cross-platform
 - **Coverage**: Enforced ≥80% for `QAOps.psm1`, JaCoCo XML
 - **Manifest Check**: `Test-ModuleManifest` on every run
-- **OS Matrix**: Windows (latest, 2019), Ubuntu (latest)
+- **OS Matrix**: Windows latest and Ubuntu latest
 - **Artifacts Uploaded**: Lint logs, test reports, coverage XML
 
 ➡️ [View GitHub Actions Workflows](https://github.com/soin8293/powershell-qops/actions)
 ---
 ## 🔄 Versioning
-Current version: `v0.2.0` (See [`CHANGELOG.md`](CHANGELOG.md:1) and `modules/QAOps/QAOps.psd1`)
+Current version: `v0.2.0` (see [`CHANGELOG.md`](CHANGELOG.md) and `modules/QAOps/QAOps.psd1`)
 
 Next milestone: `v0.3.0` (Implement `Invoke-FullAudit`)
 ---
@@ -133,4 +133,4 @@ All contributors are expected to adhere to our [`CODE_OF_CONDUCT.md`](CODE_OF_CO
 - ⏳ Publish to PSGallery
 ---
 ## 📜 License
-This project is licensed under the MIT License. See [`LICENSE`](LICENSE:0) for full text.
+This project is licensed under the MIT License. See [`LICENSE`](LICENSE) for full text.
