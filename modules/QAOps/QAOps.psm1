@@ -312,4 +312,84 @@ function Invoke-DiskCleanup {
     return $summary
 }
 
-Export-ModuleMember -Function Get-SystemReport, Invoke-DiskCleanup
+function Invoke-FullAudit {
+<#
+.SYNOPSIS
+    Produces a versioned, read-only system-health audit.
+.DESCRIPTION
+    Combines Get-SystemReport output with deterministic disk-capacity findings.
+    This command never deletes files or invokes the cleanup command.
+.PARAMETER Format
+    Return JSON (default) or a PowerShell object.
+.OUTPUTS
+    System.String or PSCustomObject
+#>
+    [CmdletBinding()]
+    param (
+        [ValidateSet('JSON', 'Object')]
+        [string]$Format = 'JSON'
+    )
+
+    $systemReport = Get-SystemReport -Format JSON | ConvertFrom-Json
+    $findings = [System.Collections.Generic.List[object]]::new()
+
+    if ($systemReport.OperatingSystem.Error) {
+        $findings.Add([PSCustomObject]@{
+            Code = 'OS_INFORMATION_UNAVAILABLE'
+            Severity = 'Warning'
+            Message = 'Operating-system information could not be collected.'
+            Evidence = [string]$systemReport.OperatingSystem.Error
+        })
+    }
+
+    foreach ($disk in @($systemReport.Disks)) {
+        $total = [double]$disk.DiskTotalSizeGB
+        $free = [double]$disk.DiskFreeSpaceGB
+        if ($total -le 0) { continue }
+
+        $freePercent = [math]::Round(($free / $total) * 100, 2)
+        if ($freePercent -le 10) {
+            $severity = 'Critical'
+        } elseif ($freePercent -le 20) {
+            $severity = 'Warning'
+        } else {
+            continue
+        }
+
+        $findings.Add([PSCustomObject]@{
+            Code = 'LOW_DISK_SPACE'
+            Severity = $severity
+            Message = "Disk $($disk.DiskDeviceID) has $freePercent% free space."
+            Evidence = [PSCustomObject]@{
+                DiskDeviceID = [string]$disk.DiskDeviceID
+                FreeSpaceGB = $free
+                TotalSizeGB = $total
+                FreePercent = $freePercent
+            }
+        })
+    }
+
+    $criticalCount = @($findings | Where-Object Severity -eq 'Critical').Count
+    $warningCount = @($findings | Where-Object Severity -eq 'Warning').Count
+    $highestSeverity = if ($criticalCount) { 'Critical' } elseif ($warningCount) { 'Warning' } else { 'None' }
+    $status = if ($criticalCount) { 'Critical' } elseif ($warningCount) { 'NeedsAttention' } else { 'Healthy' }
+
+    $audit = [PSCustomObject]@{
+        SchemaVersion = '1.0.0'
+        AuditTimestamp = [DateTimeOffset]::UtcNow.ToString('o')
+        Status = $status
+        Summary = [PSCustomObject]@{
+            HighestSeverity = $highestSeverity
+            FindingCount = $findings.Count
+            WarningCount = $warningCount
+            CriticalCount = $criticalCount
+        }
+        Findings = @($findings)
+        SystemReport = $systemReport
+    }
+
+    if ($Format -eq 'Object') { return $audit }
+    return $audit | ConvertTo-Json -Depth 8
+}
+
+Export-ModuleMember -Function Get-SystemReport, Invoke-DiskCleanup, Invoke-FullAudit

@@ -260,3 +260,63 @@ Describe 'Invoke-DiskCleanup (Function from QAOps Module)' {
         }
     }
 }
+
+Describe 'Invoke-FullAudit (Function from QAOps Module)' {
+    BeforeEach {
+        Mock -CommandName Get-SystemReport -ModuleName QAOps -MockWith {
+            [pscustomobject]@{
+                SchemaVersion = '1.0.0'
+                ReportTimestamp = '2026-08-23T00:00:00Z'
+                OperatingSystem = [pscustomobject]@{ OSName = 'Test OS' }
+                Disks = @(
+                    [pscustomobject]@{
+                        DiskDeviceID = 'T:'
+                        DiskFreeSpaceGB = 50
+                        DiskTotalSizeGB = 100
+                    }
+                )
+            } | ConvertTo-Json -Depth 5
+        }
+    }
+
+    It 'returns the stable JSON envelope by default' {
+        $audit = Invoke-FullAudit | ConvertFrom-Json
+        $audit.SchemaVersion | Should -Be '1.0.0'
+        $audit.Status | Should -Be 'Healthy'
+        $audit.Summary.FindingCount | Should -Be 0
+        $audit.SystemReport.SchemaVersion | Should -Be '1.0.0'
+    }
+
+    It 'returns an object when requested' {
+        $audit = Invoke-FullAudit -Format Object
+        $audit | Should -BeOfType PSCustomObject
+        $audit.Status | Should -Be 'Healthy'
+    }
+
+    It 'classifies low disk capacity as warning' {
+        Mock -CommandName Get-SystemReport -ModuleName QAOps -MockWith {
+            '{"SchemaVersion":"1.0.0","OperatingSystem":{"OSName":"Test"},"Disks":[{"DiskDeviceID":"T:","DiskFreeSpaceGB":15,"DiskTotalSizeGB":100}]}'
+        }
+        $audit = Invoke-FullAudit | ConvertFrom-Json
+        $audit.Status | Should -Be 'NeedsAttention'
+        $audit.Findings[0].Severity | Should -Be 'Warning'
+    }
+
+    It 'classifies ten percent free capacity as critical' {
+        Mock -CommandName Get-SystemReport -ModuleName QAOps -MockWith {
+            '{"SchemaVersion":"1.0.0","OperatingSystem":{"OSName":"Test"},"Disks":[{"DiskDeviceID":"T:","DiskFreeSpaceGB":10,"DiskTotalSizeGB":100}]}'
+        }
+        $audit = Invoke-FullAudit | ConvertFrom-Json
+        $audit.Status | Should -Be 'Critical'
+        $audit.Summary.CriticalCount | Should -Be 1
+    }
+
+    It 'records unavailable OS information without failing the audit' {
+        Mock -CommandName Get-SystemReport -ModuleName QAOps -MockWith {
+            '{"SchemaVersion":"1.0.0","OperatingSystem":{"Error":"CIM unavailable"},"Disks":[]}'
+        }
+        $audit = Invoke-FullAudit | ConvertFrom-Json
+        $audit.Status | Should -Be 'NeedsAttention'
+        $audit.Findings[0].Code | Should -Be 'OS_INFORMATION_UNAVAILABLE'
+    }
+}

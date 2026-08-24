@@ -29,10 +29,12 @@ PowerShell-QOps is a modular, test-driven system diagnostics and remediation too
 - Returns a summary object of actions taken.
 - Includes CLI wrapper script: `scripts\Invoke-DiskCleanup.ps1`.
 
-### 🧪 `Invoke-FullAudit` (Upcoming)
-- High-level system scoring
-- Exit codes reflect severity
-- Combines system report + cleanup recommendations
+### ✅ `Invoke-FullAudit`
+- Read-only orchestration of the system report and capacity findings
+- Deterministic `Healthy`, `NeedsAttention`, and `Critical` status
+- Versioned JSON contract in [`schemas/full-audit.schema.json`](schemas/full-audit.schema.json)
+- Synthetic sample output in [`examples/full-audit.sample.json`](examples/full-audit.sample.json)
+- Never invokes file cleanup; remediation remains an explicit separate command
 ---
 ## 🔬 Testing
 ### ✅ Unit Tests (Pester)
@@ -64,12 +66,16 @@ Get-SystemReport -Format JSON
 
 Invoke-DiskCleanup -DryRun -DaysOld 7
 Invoke-DiskCleanup -DaysOld 30 -Confirm
+
+Invoke-FullAudit
+Invoke-FullAudit -Format Object
 ```
 ### As CLI wrapper scripts
 ```powershell
 .\scripts\Get-SystemReport.ps1 -Format JSON
 .\scripts\Invoke-DiskCleanup.ps1 -DryRun -DaysOld 7
 .\scripts\Invoke-DiskCleanup.ps1 -DaysOld 30 # Will prompt for confirmation due to Medium ConfirmImpact
+.\scripts\Invoke-FullAudit.ps1
 ```
 ---
 ## 🔧 Project Structure
@@ -116,9 +122,7 @@ Key features:
 ➡️ [View GitHub Actions Workflows](https://github.com/soin8293/powershell-qops/actions)
 ---
 ## 🔄 Versioning
-Current version: `v0.2.0` (see [`CHANGELOG.md`](CHANGELOG.md) and `modules/QAOps/QAOps.psd1`)
-
-Next milestone: `v0.3.0` (Implement `Invoke-FullAudit`)
+Current version: `v0.3.0` (see [`CHANGELOG.md`](CHANGELOG.md) and `modules/QAOps/QAOps.psd1`)
 ---
 ## 🤝 Contributing
 Pull requests are welcome! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md:1) for guidelines.
@@ -127,7 +131,7 @@ All contributors are expected to adhere to our [`CODE_OF_CONDUCT.md`](CODE_OF_CO
 ## 🧭 Roadmap
 - ✅ `Get-SystemReport` with schema versioning and JSON output.
 - ✅ `Invoke-DiskCleanup` with dry-run, logging, and confirmation support.
-- ⏳ `Invoke-FullAudit` orchestration command.
+- ✅ `Invoke-FullAudit` orchestration command.
 - ⏳ Python CLI: `qaops-summary.py` to parse JSON into console tables
 - ⏳ GitHub Pages summary dashboard
 - ⏳ Publish to PSGallery

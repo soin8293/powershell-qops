@@ -3,7 +3,7 @@
 RootModule = 'QAOps.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.2.0'
+ModuleVersion = '0.3.0'
 
 # ID used to uniquely identify this module
 GUID = '1f1a90fa-0d4a-4d9a-b874-3c3dc99f0b2d'
@@ -59,7 +59,8 @@ ProcessorArchitecture = 'None'
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Get-SystemReport',
-    'Invoke-DiskCleanup'
+    'Invoke-DiskCleanup',
+    'Invoke-FullAudit'
 )
 
 # Cmdlets to export from this module
@@ -103,6 +104,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @{
+            '0.3.0' = @(
+                'Added a read-only Invoke-FullAudit orchestration command.',
+                'Added a versioned JSON Schema and synthetic example report.',
+                'Added deterministic warning and critical disk-capacity findings.'
+            )
             '0.2.0' = @(
                 'Added Invoke-DiskCleanup to identify and remove old temporary files.',
                 'Invoke-DiskCleanup supports -DryRun mode, logging, and ShouldProcess confirmation.',

@@ -1,0 +1,30 @@
+{
+  "SchemaVersion": "1.0.0",
+  "AuditTimestamp": "2026-08-23T12:00:00.0000000+00:00",
+  "Status": "NeedsAttention",
+  "Summary": {
+    "HighestSeverity": "Warning",
+    "FindingCount": 1,
+    "WarningCount": 1,
+    "CriticalCount": 0
+  },
+  "Findings": [
+    {
+      "Code": "LOW_DISK_SPACE",
+      "Severity": "Warning",
+      "Message": "Disk T: has 15% free space.",
+      "Evidence": {
+        "DiskDeviceID": "T:",
+        "FreeSpaceGB": 15,
+        "TotalSizeGB": 100,
+        "FreePercent": 15
+      }
+    }
+  ],
+  "SystemReport": {
+    "SchemaVersion": "1.0.0",
+    "ReportTimestamp": "2026-08-23T12:00:00Z",
+    "OperatingSystem": {"OSName": "Synthetic test host"},
+    "Disks": []
+  }
+}

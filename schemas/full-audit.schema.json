@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/soin8293/powershell-qops/schemas/full-audit.schema.json",
+  "title": "QAOps full audit",
+  "type": "object",
+  "required": ["SchemaVersion", "AuditTimestamp", "Status", "Summary", "Findings", "SystemReport"],
+  "properties": {
+    "SchemaVersion": {"const": "1.0.0"},
+    "AuditTimestamp": {"type": "string", "format": "date-time"},
+    "Status": {"enum": ["Healthy", "NeedsAttention", "Critical"]},
+    "Summary": {
+      "type": "object",
+      "required": ["HighestSeverity", "FindingCount", "WarningCount", "CriticalCount"],
+      "properties": {
+        "HighestSeverity": {"enum": ["None", "Warning", "Critical"]},
+        "FindingCount": {"type": "integer", "minimum": 0},
+        "WarningCount": {"type": "integer", "minimum": 0},
+        "CriticalCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "Findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["Code", "Severity", "Message", "Evidence"],
+        "properties": {
+          "Code": {"type": "string"},
+          "Severity": {"enum": ["Warning", "Critical"]},
+          "Message": {"type": "string"},
+          "Evidence": {}
+        }
+      }
+    },
+    "SystemReport": {"type": "object"}
+  }
+}
