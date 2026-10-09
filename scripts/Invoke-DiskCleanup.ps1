@@ -8,13 +8,15 @@
     Supports a DryRun mode and logs actions.
 .PARAMETER DryRun
     If specified, the function will only list files that would be deleted.
+.PARAMETER Locations
+    Explicit directories to inspect. There is no implicit system-wide cleanup target.
 .PARAMETER DaysOld
     Specifies the minimum age in days for files to be considered for deletion. Defaults to 14.
 .EXAMPLE
-    PS C:\> .\Invoke-DiskCleanup.ps1 -DryRun -DaysOld 7
+    PS C:\> .\Invoke-DiskCleanup.ps1 -Locations .\scratch -DryRun -DaysOld 7
     Lists files older than 7 days in temp locations that would be deleted.
 .EXAMPLE
-    PS C:\> .\Invoke-DiskCleanup.ps1 -DaysOld 30 -Confirm
+    PS C:\> .\Invoke-DiskCleanup.ps1 -Locations .\scratch -DaysOld 30 -Confirm
     Prompts for confirmation before deleting files older than 30 days.
 .NOTES
     This script depends on the QAOps module being available in the module path or located at '..\modules\QAOps\QAOps.psd1' relative to this script.
@@ -23,6 +25,9 @@
 
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param (
+    [Parameter(Mandatory = $true)]
+    [string[]]$Locations,
+
     [Parameter(Mandatory = $false)]
     [switch]$DryRun,
 

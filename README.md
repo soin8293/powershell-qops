@@ -1,140 +1,78 @@
-# PowerShell-QOps
-*A cross-platform PowerShell module for system reporting and guarded temporary-file cleanup, with automated testing and CI.*
+# PowerShell QOps
+
+PowerShell 7 commands for operating-system and disk reporting, read-only capacity audits, and explicit temporary-file cleanup. Windows and Ubuntu are covered by the GitHub Actions workflow.
 
 [![Build](https://github.com/soin8293/powershell-qops/actions/workflows/windows-ci.yml/badge.svg)](https://github.com/soin8293/powershell-qops/actions/workflows/windows-ci.yml)
-[![PowerShell Version](https://img.shields.io/badge/PowerShell-7%2B-blue)](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows)
-[![License](https://img.shields.io/github/license/soin8293/powershell-qops)](https://github.com/soin8293/powershell-qops/blob/main/LICENSE)
----
-## 📜 Overview
-PowerShell-QOps is a modular, test-driven system diagnostics and remediation toolkit for Windows and PowerShell Core environments. Designed for IT professionals and QA engineers, it features:
-- Modular PowerShell functions for system reporting and cleanup
-- Cross-platform compatibility (Windows + Ubuntu via PowerShell 7)
-- CI/CD with linting, Pester testing, and enforced code coverage
-- JSON output for integration into dashboards or monitoring tools
-- CLI wrapper scripts for command-line usage
-- Module manifest for PSGallery readiness
----
-## 📦 Features
-### ✅ `Get-SystemReport`
-- Collects OS, disk, RAM, network info (RAM & network info are future enhancements for this function)
-- Structured JSON output with schema versioning (`1.0.0`)
-- Robust error handling
-- CI tested with Pester and snapshot validation (snapshot validation is a future test enhancement)
 
-### ✅ `Invoke-DiskCleanup`
-- Cleans temporary files from user and system TEMP directories based on age (`-DaysOld` parameter, default 14).
-- Supports `-DryRun` mode to preview deletions in `CleanupPlan.json` without making changes.
-- Live mode uses `ShouldProcess` for `-Confirm` and `-WhatIf` support.
-- Logs actions (identified, deleted, skipped files, errors) to `C:\ProgramData\QAOps\Cleanup.log` (requires admin privileges for default log path).
-- Returns a summary object of actions taken.
-- Includes CLI wrapper script: `scripts\Invoke-DiskCleanup.ps1`.
+## Start with a read-only report
 
-### ✅ `Invoke-FullAudit`
-- Read-only orchestration of the system report and capacity findings
-- Deterministic `Healthy`, `NeedsAttention`, and `Critical` status
-- Versioned JSON contract in [`schemas/full-audit.schema.json`](schemas/full-audit.schema.json)
-- Synthetic sample output in [`examples/full-audit.sample.json`](examples/full-audit.sample.json)
-- Never invokes file cleanup; remediation remains an explicit separate command
----
-## 🔬 Testing
-### ✅ Unit Tests (Pester)
-- Verifies output schema fields for `Get-SystemReport`
-- Mocks WMI failures for `Get-SystemReport`
-- Validates safe handling of missing data for `Get-SystemReport`
-### ✅ Unit Tests (Pester) for `Invoke-DiskCleanup`
-- Verifies dry run logic, `CleanupPlan.json` creation, and no actual deletions.
-- Verifies live run deletions, logging, and `ShouldProcess` interactions using mocks.
-- Tests handling of empty/inaccessible locations and log directory creation.
-### 🔄 Integration Tests (Planned)
-- Future tests may involve actual file system manipulation in controlled environments.
-- CI runs all unit tests across Windows and Linux.
-### 📈 Code Coverage
-- JaCoCo XML generated from Pester for `QAOps.psm1`
-- 80% minimum threshold enforced in CI for `QAOps.psm1`
-- Failing coverage fails the build
-- Coverage results uploaded to CI artifacts
----
-## 🧪 Usage
-### As a module
+From the repository root in PowerShell 7:
+
 ```powershell
-# Ensure the module is in your $env:PSModulePath or provide the full path to QAOps.psd1
-Import-Module QAOps 
-# Or from the project root:
-# Import-Module ./modules/QAOps/QAOps.psd1 -Force
-
+Import-Module ./modules/QAOps/QAOps.psd1 -Force
 Get-SystemReport -Format JSON
-
-Invoke-DiskCleanup -DryRun -DaysOld 7
-Invoke-DiskCleanup -DaysOld 30 -Confirm
-
-Invoke-FullAudit
 Invoke-FullAudit -Format Object
+# Equivalent wrapper:
+./scripts/Invoke-FullAudit.ps1
 ```
-### As CLI wrapper scripts
-```powershell
-.\scripts\Get-SystemReport.ps1 -Format JSON
-.\scripts\Invoke-DiskCleanup.ps1 -DryRun -DaysOld 7
-.\scripts\Invoke-DiskCleanup.ps1 -DaysOld 30 # Will prompt for confirmation due to Medium ConfirmImpact
-.\scripts\Invoke-FullAudit.ps1
-```
----
-## 🔧 Project Structure
-```
-.
-├── .github/
-│   └── workflows/
-│       └── windows-ci.yml      # Main CI/CD workflow
-├── docs/                       # Documentation files (architecture.md, etc.)
-│   └── screenshots/
-├── modules/
-│   └── QAOps/
-│       ├── QAOps.psm1          # Core module functions (exported)
-│       └── QAOps.psd1          # Module manifest
-├── scripts/                    # Wrapper scripts for CLI use
-│   ├── Get-SystemReport.ps1
-│   ├── Invoke-DiskCleanup.ps1
-│   └── utils/                  # (Utility scripts, if any)
-├── tests/
-│   ├── Pester.Tests.ps1        # Pester tests for the module
-│   └── data/                   # Test data (e.g., golden JSON files)
-├── .gitattributes
-├── .gitignore
-├── .pre-commit-config.yaml     # For pre-commit hooks
-├── CHANGELOG.md
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── Dockerfile.win              # (Optional) For Windows Nano container
-├── LICENSE
-├── qaops-summary.py            # (Optional) Python helper for JSON -> Rich table
-└── requirements.txt            # Python dependencies
-```
----
-## ⚙️ CI/CD
-Our Continuous Integration (CI) pipeline runs on every push and pull request via GitHub Actions.
-Key features:
-- **Linting**: PSScriptAnalyzer (fails on errors/warnings)
-- **Testing**: Pester v5, cross-platform
-- **Coverage**: Enforced ≥80% for `QAOps.psm1`, JaCoCo XML
-- **Manifest Check**: `Test-ModuleManifest` on every run
-- **OS Matrix**: Windows latest and Ubuntu latest
-- **Artifacts Uploaded**: Lint logs, test reports, coverage XML
 
-➡️ [View GitHub Actions Workflows](https://github.com/soin8293/powershell-qops/actions)
----
-## 🔄 Versioning
-Current version: `v0.3.0` (see [`CHANGELOG.md`](CHANGELOG.md) and `modules/QAOps/QAOps.psd1`)
----
-## 🤝 Contributing
-Pull requests are welcome! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md:1) for guidelines.
-All contributors are expected to adhere to our [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md:1).
----
-## 🧭 Roadmap
-- ✅ `Get-SystemReport` with schema versioning and JSON output.
-- ✅ `Invoke-DiskCleanup` with dry-run, logging, and confirmation support.
-- ✅ `Invoke-FullAudit` orchestration command.
-- ⏳ Python CLI: `qaops-summary.py` to parse JSON into console tables
-- ⏳ GitHub Pages summary dashboard
-- ⏳ Publish to PSGallery
----
-## 📜 License
-This project is licensed under the MIT License. See [`LICENSE`](LICENSE) for full text.
+`Get-SystemReport` collects operating-system and disk information. Windows uses CIM when available; other environments fall back to basic OS information and filesystem drives. RAM and network reporting are not implemented. The `Markdown` and `Console` format options currently warn and return JSON.
+
+`Invoke-FullAudit` adds disk-capacity findings to that report. Free space at or below 10% is Critical; above 10% and at or below 20% is Warning. Its status is `Critical`, `NeedsAttention`, or `Healthy` according to the collected findings. `Healthy` means no findings from these limited checks, not complete host health or security assurance. Collection errors appear in the report. The audit never invokes cleanup.
+
+- [Architecture and data flow](docs/architecture.md)
+- [Versioned audit schema](schemas/full-audit.schema.json)
+- [Synthetic example report](examples/full-audit.sample.json)
+
+## Preview cleanup of a chosen directory
+
+Both the module and wrapper require explicit `-Locations`. Use a directory you intend to clean; nothing chooses system directories for you.
+
+```powershell
+# Replace ./scratch with your intended directory before running.
+Invoke-DiskCleanup -Locations ./scratch -DryRun -DaysOld 7
+# Equivalent wrapper:
+./scripts/Invoke-DiskCleanup.ps1 -Locations ./scratch -DryRun -DaysOld 7
+```
+
+Dry run writes `CleanupPlan.json` in the current directory and does not delete files. Selection uses `LastWriteTime`, recursively, for files older than the cutoff. Review the generated plan and the returned errors before running live cleanup:
+
+```powershell
+Invoke-DiskCleanup -Locations ./scratch -DaysOld 30 -Confirm
+```
+
+Live cleanup uses PowerShell `ShouldProcess`; request `-Confirm` explicitly when you want prompts. `ConfirmImpact = Medium` does not guarantee a prompt under default preferences. `-WhatIf` skips deletions but may still create/write the cleanup log, so use `-DryRun` for a deletion preview without live logging. Live logs use `C:/ProgramData/QAOps/Cleanup.log` on Windows (permissions may be required), or `QAOps/Cleanup.log` under the system temporary directory elsewhere. Failures are returned in the summary; enumeration may omit inaccessible files.
+
+## Repository layout
+
+```text
+modules/QAOps/             Module manifest and three exported commands
+scripts/                  CLI wrappers and documentation validator
+schemas/                  Full-audit JSON Schema
+examples/                 Synthetic sample output
+docs/architecture.md      Implementation and operational boundaries
+tests/                    Pester tests
+.github/workflows/        Windows and Ubuntu CI
+```
+
+Unused empty container, Python-helper, utility and pre-commit scaffolds have been removed. There is no Python dependency or container requirement for the module.
+
+## Development and checks
+
+Install Pester 5 and PSScriptAnalyzer in your development environment, then run:
+
+```powershell
+Test-ModuleManifest ./modules/QAOps/QAOps.psd1
+./scripts/Test-Documentation.ps1
+Invoke-Pester -Path ./tests -Output Detailed
+Invoke-ScriptAnalyzer -Path ./modules/QAOps -Recurse
+Invoke-ScriptAnalyzer -Path ./scripts -Recurse
+```
+
+CI runs the manifest, documentation, linter and Pester checks on Windows and Ubuntu. It also generates JaCoCo coverage for the module and checks the 80% threshold. Tests use synthetic data and mocks; they do not establish production deployment or adoption. Release packaging is triggered only by version tags.
+
+Current tagged version: `v0.3.0`. See [change history](CHANGELOG.md). Container packaging, a Python table renderer, a hosted dashboard and PowerShell Gallery publication remain possible future work; they are not shipped capabilities.
+
+## Contributing and license
+
+See [contribution guidelines](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md), and the [MIT license](LICENSE).

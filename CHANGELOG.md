@@ -1,5 +1,13 @@
 # Changelog
 
+## Documentation and wrapper repair - 2026-10-08
+
+- Corrected the coverage gate to read JaCoCo attributes and fail on missing/invalid reports, with threshold regressions.
+- Added the architecture guide and a CI check for empty documents and broken local links.
+- Corrected contribution links, cleanup examples, confirmation behavior and feature descriptions.
+- Added explicit required `Locations` forwarding to the cleanup wrapper, with a disposable-file dry-run test.
+- Removed six unused empty container, Python, utility and pre-commit scaffolds. Historical entries below describe the original scaffold, not current capabilities.
+
 ## [0.3.0] - 2026-08-23
 
 - Added read-only `Invoke-FullAudit` orchestration.
