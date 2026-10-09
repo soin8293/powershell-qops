@@ -46,6 +46,10 @@ jobs:
         Test-ModuleManifest -Path ./modules/QAOps/QAOps.psd1 -ErrorAction Stop | Out-Null
         Write-Host "Module manifest ./modules/QAOps/QAOps.psd1 is valid."
 
+    - name: Check documentation
+      shell: pwsh
+      run: ./scripts/Test-Documentation.ps1
+
     - name: Lint PowerShell scripts
       shell: pwsh
       run: |
@@ -91,35 +95,7 @@ jobs:
     - name: Enforce code coverage >= 80%
       if: success()
       shell: pwsh
-      run: |
-        if (-not (Test-Path "./Coverage.xml")) {
-          Write-Warning "Coverage.xml not found. Skipping coverage check."
-          exit 0
-        }
-        try {
-            $cov = [xml](Get-Content -Path "./Coverage.xml" -Raw)
-            $lineRateAttribute = $null
-            $lineCounterReport = $cov.report.counter | Where-Object {$_.type -eq 'LINE'}
-            if ($lineCounterReport) {
-                $covered = [double]$lineCounterReport.'@covered'
-                $missed = [double]$lineCounterReport.'@missed'
-                if (($covered + $missed) -gt 0) { $lineRateAttribute = $covered / ($covered + $missed) } else { $lineRateAttribute = 1.0 }
-            }
-            if (-not $lineRateAttribute -and $cov.coverage.'@line-rate') { $lineRateAttribute = [double]$cov.coverage.'@line-rate' }
-            if (-not $lineRateAttribute) {
-                $totalLinesCovered = 0; $totalLinesMissed = 0
-                $counters = $cov.SelectNodes("//counter[@type='LINE']")
-                if ($counters.Count -gt 0) {
-                    foreach ($counter in $counters) { $totalLinesCovered += [double]$counter.'@covered'; $totalLinesMissed += [double]$counter.'@missed' }
-                    if (($totalLinesCovered + $totalLinesMissed) -gt 0) { $lineRateAttribute = $totalLinesCovered / ($totalLinesCovered + $totalLinesMissed) } else { $lineRateAttribute = 1.0 }
-                } else { Write-Warning "No LINE counters found in Coverage.xml."; $lineRateAttribute = 0 }
-            }
-            if ($null -eq $lineRateAttribute) { Write-Error "Could not determine line-rate from Coverage.xml."; exit 1 }
-            $pct = [int]($lineRateAttribute * 100)
-            Write-Host "Current code coverage on ${{ runner.os }}: $pct%"
-            if ($pct -lt 80) { Write-Error "Code coverage on ${{ runner.os }} is $pct%, less than 80%."; exit 1 }
-            else { Write-Host "Code coverage $pct% on ${{ runner.os }} meets threshold." }
-        } catch { Write-Error "Error parsing Coverage.xml: $($_.Exception.Message)"; exit 1 }
+      run: ./scripts/Test-Coverage.ps1 -Path ./Coverage.xml -Minimum 80
 
     - name: Upload Pester Test Results
       if: always()
