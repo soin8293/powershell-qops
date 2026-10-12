@@ -165,6 +165,7 @@ function Invoke-DiskCleanup {
         [switch]$DryRun,
 
         [Parameter(Mandatory = $false)]
+        [ValidateRange(0, [int]::MaxValue)]
         [int]$DaysOld = 14
     )
 
@@ -232,7 +233,7 @@ function Invoke-DiskCleanup {
 
     foreach ($location in $Locations) {
         Write-Verbose "Scanning location: $location"
-        if (-not (Test-Path -Path $location)) {
+        if (-not (Test-Path -LiteralPath $location -PathType Container)) {
             Write-Warning "Location not found or inaccessible: $location"
             $summary.Errors.Add("Location not found or inaccessible: $location")
             continue
@@ -241,7 +242,7 @@ function Invoke-DiskCleanup {
         try {
             # Get all files, then filter by LastWriteTime. Recurse through subdirectories.
             # -ErrorAction SilentlyContinue for individual file access errors during enumeration
-            $files = Get-ChildItem -Path $location -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+            $files = Get-ChildItem -LiteralPath $location -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
                 $summary.ItemsScanned++
                 $_ # Pass the object along
             } | Where-Object { $_.LastWriteTime -lt $cutoffDate }
@@ -265,7 +266,7 @@ function Invoke-DiskCleanup {
                     Write-CleanupLog "Identified for deletion: $($file.FullName) (LastWrite: $($file.LastWriteTime))"
                     if ($PSCmdlet.ShouldProcess($file.FullName, "Delete File (Older than $DaysOld days, LastWrite: $($file.LastWriteTime))")) {
                         try {
-                            Remove-Item -Path $file.FullName -Force -ErrorAction Stop
+                            Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop
                             Write-CleanupLog "DELETED: $($file.FullName)"
                             $summary.ItemsDeleted++
                         }

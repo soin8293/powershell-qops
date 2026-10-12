@@ -4,6 +4,15 @@ PowerShell 7 commands for operating-system and disk reporting, read-only capacit
 
 [![Build](https://github.com/soin8293/powershell-qops/actions/workflows/windows-ci.yml/badge.svg)](https://github.com/soin8293/powershell-qops/actions/workflows/windows-ci.yml)
 
+## Operational depth
+
+Start with read-only system reports and capacity findings, then preview any
+cleanup. Cleanup locations and selected filenames are treated literally;
+negative ages are rejected. Tests cover an old bracket-named file alongside a
+fresh lookalike and verify preview/live parity. See the
+[operator runbook and engineering roadmap](docs/engineering-roadmap.md).
+
+
 ## Start with a read-only report
 
 From the repository root in PowerShell 7:
@@ -76,3 +85,13 @@ Current tagged version: `v0.3.0`. See [change history](CHANGELOG.md). Container 
 ## Contributing and license
 
 See [contribution guidelines](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md), and the [MIT license](LICENSE).
+
+## AI assistance
+
+Recent maintenance repairs included AI-assisted code changes, regression tests,
+and documentation.
+
+The maintainer, soin8293, is responsible for project decisions and for reviewing
+and validating contributions. AI assistance does not establish correctness,
+security, or production readiness; consult the documented checks and
+limitations. Existing licenses and upstream credits remain applicable.
